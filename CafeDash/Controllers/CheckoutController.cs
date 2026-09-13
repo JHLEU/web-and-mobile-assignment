@@ -96,7 +96,7 @@ namespace CafeDash.Controllers
         // ==========================================
         // 2. CART API (Replaces cart_actions.php)
         // ==========================================
-        [Route("Cart/Api")]
+        [Route("/Cart/Api")]
         public IActionResult CartApi([FromForm] string action, [FromQuery(Name = "action")] string actionGet, [FromForm] string cart_id, [FromForm] int quantity, [FromForm(Name = "food_id")] int food_id, [FromForm(Name = "restaurant_id")] int restaurant_id, [FromForm(Name = "restaurant_name")] string restaurant_name, [FromForm(Name = "item_name")] string item_name, [FromForm(Name = "item_type")] string item_type, [FromForm(Name = "unit_amount")] decimal unit_amount, [FromForm] string sugar, [FromForm] string ice, [FromForm] string remark)
         {
             string act = action ?? actionGet ?? "get";

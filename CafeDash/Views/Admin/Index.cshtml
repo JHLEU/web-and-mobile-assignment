@@ -1,5 +1,6 @@
-﻿@model List<CafeDash.Models.Feedback>
-@{
+﻿@model List<CafeDash.Models.Feedback>?
+
+@{ 
     ViewBag.Title = "Admin Dashboard";
 }
 
@@ -26,9 +27,9 @@
     </div>
 
     <!-- The new animated notification bar! -->
-    @if (TempData["msg"] != null)
+    @if (!string.IsNullOrEmpty(TempData["msg"]?.ToString()))
     {
-        string msg = TempData["msg"].ToString()!;
+        string msg = TempData["msg"]?.ToString()!;
         bool isError = msg.Contains("error", StringComparison.OrdinalIgnoreCase);
         <div id="notification-bar" style="position: fixed; top: 20px; right: 20px; max-width: 400px; padding: 16px 20px; border-radius: 8px; background: @(isError ? "#e74c3c" : "#27ae60"); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 12px; z-index: 9999; animation: slideIn 0.3s ease-out, slideOut 3s ease-out 2.7s forwards;">
             <div style="font-size: 20px;">@(isError ? "❌" : "✓")</div>
@@ -65,9 +66,12 @@
     <div class="main-menus">
         <div class="main-detail">
             <div class="detail-wrapper">
-                @if (Model != null && Model.Count > 0)
+                @{
+                    var feedbackList = Model ?? Enumerable.Empty<CafeDash.Models.Feedback>();
+                }
+                @if (feedbackList.Any())
                 {
-                    foreach (var row in Model)
+                    foreach (var row in feedbackList)
                     {
                         <div class="detail-card" style="padding: 20px; height: auto; cursor: default;">
                             <div class="detail-name">
@@ -78,7 +82,9 @@
                             <div style="font-size: 13px; color: var(--blackColor); margin-bottom: 15px;">
                                 <p><strong>Phone:</strong> @row.Phone</p>
                                 <p style="margin-top: 10px; font-style: italic;">"@row.Message"</p>
-                                <p style="font-size: 11px; color: gray; margin-top: 10px;">Received: @row.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</p>
+                                <p style="font-size: 11px; color: gray; margin-top: 10px;">
+                                    Received: @(row.CreatedAt is DateTime dt ? dt.ToString("dd MMM yyyy, hh:mm tt") : "Unknown")
+                                </p>
                             </div>
                             <form method="POST" action="/Admin/DeleteFeedback">
                                 <input type="hidden" name="feedback_id" value="@row.Id">

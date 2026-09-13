@@ -30,11 +30,26 @@
             <div class="profile-picture-section">
                 <div class="profile-picture-container">
                     <div id="profilePicWrapper" class="profile-pic-wrapper">
-                        <!-- Default avatar image OR load the saved image if it exists -->
                         <img id="profilePic" src="@(string.IsNullOrEmpty(ViewBag.ProfileImage) ? "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22150%22 height=%22150%22 fill=%22%23D3D3D3%22/%3E%3Ccircle cx=%2275%22 cy=%2250%22 r=%2230%22 fill=%22white%22/%3E%3Cpath d=%22M 30 90 Q 30 80 75 80 Q 120 80 120 90 L 120 150 Q 120 150 75 150 Q 30 150 30 150 Z%22 fill=%22white%22/%3E%3C/svg%3E" : ViewBag.ProfileImage)" alt="Profile Picture" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover;">
                     </div>
-                    <label for="profileImageInput" class="upload-btn" style="cursor: pointer;">Change Photo</label>
-                    <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
+
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+                        <label for="profileImageInput" class="upload-btn" style="cursor: pointer;">Upload Photo</label>
+                        <input type="file" id="profileImageInput" accept="image/*" style="display: none;">
+
+                        <!-- WEBCAM BUTTON -->
+                        <button type="button" id="openCameraBtn" class="upload-btn" style="background: #333; cursor: pointer; border: none; color: white; padding: 8px 15px; border-radius: 5px;">Use Webcam</button>
+                    </div>
+
+                    <!-- WEBCAM VIEWER -->
+                    <div id="cameraContainer" style="display: none; margin-top: 15px; text-align: center;">
+                        <video id="webcamVideo" autoplay playsinline style="width: 100%; max-width: 250px; border-radius: 8px; border: 2px solid var(--primaryColor);"></video>
+                        <canvas id="cameraCanvas" style="display: none;"></canvas>
+                        <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center;">
+                            <button type="button" id="captureBtn" class="save-btn" style="width: auto; padding: 5px 15px;">Snap Photo</button>
+                            <button type="button" id="closeCameraBtn" class="save-btn" style="width: auto; padding: 5px 15px; background: #888;">Cancel</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -97,7 +112,7 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
         function showNotification(message, type = 'info') {
             const text = String(message || '');
             if (type === 'info') {
@@ -129,7 +144,7 @@
 
         // Tab Switching
         document.querySelectorAll('.setting-tab-link').forEach(link => {
-            link.addEventListener('click', function (e) {
+            link.addEventListener('click', function(e) {
                 e.preventDefault();
                 const tabName = this.getAttribute('data-tab');
                 document.querySelectorAll('.setting-content').forEach(content => content.classList.remove('active'));
@@ -142,12 +157,12 @@
             });
         });
 
-        // --- NEW: PROFILE PICTURE UPLOAD VIA C# ---
+        // --- FILE UPLOAD VIA C# ---
         const profileImageInput = document.getElementById('profileImageInput');
         const profilePic = document.getElementById('profilePic');
 
         if (profileImageInput) {
-            profileImageInput.addEventListener('change', function () {
+            profileImageInput.addEventListener('change', function() {
                 const file = this.files[0];
                 if (!file) return;
 
@@ -161,7 +176,6 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            // Update image on screen immediately
                             profilePic.src = data.filepath + "?t=" + new Date().getTime();
                             showNotification('Profile picture updated successfully!', 'success');
                         } else {
@@ -174,8 +188,68 @@
             });
         }
 
+        // --- NEW: WEBCAM INTEGRATION ---
+        const openCameraBtn = document.getElementById('openCameraBtn');
+        const closeCameraBtn = document.getElementById('closeCameraBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const webcamVideo = document.getElementById('webcamVideo');
+        const cameraCanvas = document.getElementById('cameraCanvas');
+        let videoStream = null;
+
+        if (openCameraBtn) {
+            // 1. Turn on the camera
+            openCameraBtn.addEventListener('click', async function() {
+                try {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    webcamVideo.srcObject = videoStream;
+                    cameraContainer.style.display = 'block';
+                } catch (err) {
+                    showNotification('Camera access denied or unavailable.', 'error');
+                }
+            });
+
+            // 2. Turn off the camera
+            closeCameraBtn.addEventListener('click', function() {
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                }
+                cameraContainer.style.display = 'none';
+            });
+
+            // 3. Snap the photo and upload it
+            captureBtn.addEventListener('click', function() {
+                cameraCanvas.width = webcamVideo.videoWidth;
+                cameraCanvas.height = webcamVideo.videoHeight;
+                const ctx = cameraCanvas.getContext('2d');
+                ctx.drawImage(webcamVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+
+                cameraCanvas.toBlob((blob) => {
+                    const file = new File([blob], "webcam-snapshot.jpg", { type: "image/jpeg" });
+                    const formData = new FormData();
+                    formData.append('profileImage', file);
+
+                    fetch('/Home/UploadAvatar', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                profilePic.src = data.filepath + "?t=" + new Date().getTime();
+                                showNotification('Webcam photo saved successfully!', 'success');
+                                closeCameraBtn.click(); // Auto-close camera
+                            } else {
+                                showNotification('Upload failed: ' + data.message, 'error');
+                            }
+                        })
+                        .catch(error => showNotification('Error connecting to server.', 'error'));
+                }, 'image/jpeg');
+            });
+        }
+
         // Save Profile via C# JSON API
-        document.getElementById('saveProfileBtn').addEventListener('click', function () {
+        document.getElementById('saveProfileBtn').addEventListener('click', function() {
             const fullName = document.getElementById('fullName').value;
             const email = document.getElementById('email').value;
             const phone = document.getElementById('phone').value;
@@ -203,7 +277,7 @@
         // Change Password via C# JSON API
         const updatePasswordBtn = document.getElementById('accountUpdatePasswordBtn');
         if (updatePasswordBtn) {
-            updatePasswordBtn.addEventListener('click', function () {
+            updatePasswordBtn.addEventListener('click', function() {
                 const currentPassword = document.getElementById('accountCurrentPassword').value;
                 const newPassword = document.getElementById('accountNewPassword').value;
                 const confirmPassword = document.getElementById('accountConfirmPassword').value;

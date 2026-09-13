@@ -1,67 +1,38 @@
-using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
+using CafeDash.Data;
 using CafeDash.Models;
-using System.IO;
-using System.Linq;
-using System;
-using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CafeDash.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly string _connectionString;
+        private readonly ApplicationDbContext _context;
 
-        public HomeController(IConfiguration configuration)
+        public HomeController(ApplicationDbContext context)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+            _context = context;
         }
 
         // ==========================================
         // HOMEPAGE
         // ==========================================
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             ViewBag.Title = "Welcome to Cafe Dash";
             var viewModel = new CustomerHomeViewModel();
 
-            using (var conn = new MySqlConnection(_connectionString))
-            {
-                conn.Open();
+            // 1. Get Top 3 Restaurants for Recommendations using EF Core
+            viewModel.TopRestaurants = await _context.Set<Restaurant>()
+                .OrderByDescending(r => r.Rating)
+                .Take(3)
+                .ToListAsync();
 
-                // 1. Get Top 3 Restaurants for Recommendations
-                var cmdTop = new MySqlCommand("SELECT * FROM Restaurant ORDER BY Rating DESC LIMIT 3", conn);
-                using (var reader = cmdTop.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        viewModel.TopRestaurants.Add(new Restaurant
-                        {
-                            Restaurant_ID = Convert.ToInt32(reader["Restaurant_ID"]),
-                            Name = reader["Name"].ToString(),
-                            Rating = reader["Rating"] != DBNull.Value ? Convert.ToDecimal(reader["Rating"]) : 0
-                        });
-                    }
-                }
+            // 2. Get All Restaurants for the main list using EF Core
+            viewModel.AllRestaurants = await _context.Set<Restaurant>()
+                .ToListAsync();
 
-                // 2. Get All Restaurants for the main list
-                var cmdAll = new MySqlCommand("SELECT * FROM Restaurant", conn);
-                using (var reader = cmdAll.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        viewModel.AllRestaurants.Add(new Restaurant
-                        {
-                            Restaurant_ID = Convert.ToInt32(reader["Restaurant_ID"]),
-                            Name = reader["Name"].ToString(),
-                            Restaurant_type = reader["Restaurant_type"].ToString(),
-                            Address = reader["Address"].ToString(),
-                            Rating = reader["Rating"] != DBNull.Value ? Convert.ToDecimal(reader["Rating"]) : 0
-                        });
-                    }
-                }
-            }
             return View(viewModel);
         }
 
@@ -69,75 +40,59 @@ namespace CafeDash.Controllers
         // CAFE MENU PAGE
         // ==========================================
         [HttpGet]
-        public IActionResult Cafe(int id)
+        public async Task<IActionResult> Cafe(int id)
         {
             if (id <= 0) return RedirectToAction("Index");
 
             var viewModel = new CafeViewModel();
 
-            using (var conn = new MySqlConnection(_connectionString))
+            // 1. Get Restaurant Details via EF Core
+            var restaurant = await _context.Restaurants
+                .FirstOrDefaultAsync(r => r.Restaurant_ID == id);
+
+            if (restaurant == null) return RedirectToAction("Index");
+
+            viewModel.Restaurant = restaurant;
+
+            // 2. Get Menu Items directly from the Foods table via EF Core
+            var dbFoods = await _context.Foods
+                .Where(f => f.Restaurant_ID == id)
+                .ToListAsync();
+
+            var menuList = new List<MenuItem>();
+
+            foreach (var f in dbFoods)
             {
-                conn.Open();
-                // 1. Get Restaurant Details
-                var cmdRes = new MySqlCommand("SELECT * FROM Restaurant WHERE Restaurant_ID = @id", conn);
-                cmdRes.Parameters.AddWithValue("@id", id);
-                using (var reader = cmdRes.ExecuteReader())
+                string type = f.Food_type ?? "Others";
+                if (string.IsNullOrWhiteSpace(type)) type = "Others";
+
+                string typeLower = type.ToLower();
+                bool isDrink = typeLower.Contains("drink") || typeLower.Contains("beverage") || typeLower.Contains("coffee") || typeLower.Contains("tea");
+
+                menuList.Add(new MenuItem
                 {
-                    if (reader.Read())
-                    {
-                        viewModel.Restaurant = new Restaurant
-                        {
-                            Restaurant_ID = Convert.ToInt32(reader["Restaurant_ID"]),
-                            Name = reader["Name"].ToString(),
-                            Address = reader["Address"].ToString(),
-                            Restaurant_type = reader["Restaurant_type"].ToString(),
-                            Rating = reader["Rating"] != DBNull.Value ? Convert.ToDecimal(reader["Rating"]) : 0,
-                            Contain_number = reader["Contain_number"].ToString(),
-                            Email = reader["Email"].ToString()
-                        };
-                    }
-                    else return RedirectToAction("Index"); // Return home if not found
-                }
-
-                // 2. Get Menu Items
-                var cmdMenu = new MySqlCommand("SELECT * FROM Food WHERE Restaurant_ID = @id", conn);
-                cmdMenu.Parameters.AddWithValue("@id", id);
-                using (var reader = cmdMenu.ExecuteReader())
-                {
-                    var menuList = new List<MenuItem>();
-                    while (reader.Read())
-                    {
-                        string type = reader["Food_type"].ToString() ?? "Others";
-                        if (string.IsNullOrWhiteSpace(type)) type = "Others";
-
-                        // Logic to check if the item is a drink for the sugar/ice modal
-                        string typeLower = type.ToLower();
-                        bool isDrink = typeLower.Contains("drink") || typeLower.Contains("beverage") || typeLower.Contains("coffee") || typeLower.Contains("tea");
-
-                        menuList.Add(new MenuItem
-                        {
-                            Id = Convert.ToInt32(reader["Food_ID"]),
-                            Name = reader["Name"].ToString(),
-                            Detail = reader["detail"].ToString(),
-                            Type = type,
-                            Amount = Convert.ToDecimal(reader["amount"]),
-                            IsDrink = isDrink,
-                            Image = $"/material/{viewModel.Restaurant.Name}/{reader["Name"]}.jpg"
-                        });
-                    }
-
-                    // Group by type for the UI headers
-                    viewModel.GroupedMenuItems = menuList
-                        .GroupBy(m => m.Type!)
-                        .ToDictionary(g => g.Key, g => g.ToList());
-                }
+                    Id = f.Food_ID,
+                    Name = f.Name,
+                    Detail = f.Detail,
+                    Type = type,
+                    Amount = f.Amount ?? 0,
+                    IsDrink = isDrink,
+                    Image = $"/material/{viewModel.Restaurant.Name}/{f.Name}.jpg"
+                });
             }
+
+            // Group by type for the UI headers
+            viewModel.GroupedMenuItems = menuList
+                .GroupBy(m => m.Type!)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             return View(viewModel);
         }
 
         // ==========================================
         // CONTACT US PAGE
         // ==========================================
+        // 1. This loads the page when you click the menu link (GET)
         [HttpGet]
         public IActionResult Contact()
         {
@@ -145,8 +100,9 @@ namespace CafeDash.Controllers
             return View();
         }
 
+        // 2. This saves the data when you click submit (POST)
         [HttpPost]
-        public IActionResult Contact(string name, string phone, string email, string message)
+        public async Task<IActionResult> Contact(string name, string phone, string email, string message)
         {
             ViewBag.Title = "Contact Us - Cafe Dash";
 
@@ -156,18 +112,13 @@ namespace CafeDash.Controllers
                 return View();
             }
 
-            using (var conn = new MySqlConnection(_connectionString))
-            {
-                conn.Open();
-                var cmd = new MySqlCommand("INSERT INTO contact_us (name, phone, email, message) VALUES (@name, @phone, @email, @message)", conn);
-                cmd.Parameters.AddWithValue("@name", name);
-                cmd.Parameters.AddWithValue("@phone", phone);
-                cmd.Parameters.AddWithValue("@email", email);
-                cmd.Parameters.AddWithValue("@message", message);
+            // Using GETDATE() to safely fill the NOT NULL Created_at column
+            int result = await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO ContactUs (Name, Phone, Email, Message, Created_at) VALUES ({0}, {1}, {2}, {3}, GETDATE())",
+                name, phone, email, message);
 
-                if (cmd.ExecuteNonQuery() > 0) ViewBag.Success = "Message sent successfully. We will get back to you shortly.";
-                else ViewBag.Error = "Unable to save your message. Please try again later.";
-            }
+            if (result > 0) ViewBag.Success = "Message sent successfully. We will get back to you shortly.";
+            else ViewBag.Error = "Unable to save your message. Please try again later.";
 
             return View();
         }
@@ -176,68 +127,49 @@ namespace CafeDash.Controllers
         // BILLS PAGE
         // ==========================================
         [HttpGet]
-        public IActionResult Bills()
+        public async Task<IActionResult> Bills()
         {
             ViewBag.Title = "Bills - Cafe Dash";
 
-            // 🔒 REAL SECURE SESSION CHECK
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
             if (userId == 0) return RedirectToAction("Login", "Account");
 
+            // 1. We query using the safe BillDto that has no lists!
+            var billDtos = await _context.Database.SqlQueryRaw<BillDto>(@"
+        SELECT p.Payment_ID, p.Payment_amount, p.Subtotal_amount, p.SST_amount, 
+               p.Payment_status, p.Created_at, p.Paid_at, r.Name AS Display_restaurant_name
+        FROM Payment p
+        LEFT JOIN Restaurants r ON p.Restaurant_ID = r.Restaurant_ID
+        WHERE p.User_ID = {0} ORDER BY p.Created_at DESC", userId)
+        .ToListAsync();
+
             var bills = new List<Bill>();
-            using (var conn = new MySqlConnection(_connectionString))
+
+            // 2. We convert the DTOs back into your normal Bill model
+            foreach (var dto in billDtos)
             {
-                conn.Open();
-                var cmd = new MySqlCommand(@"
-                    SELECT p.Payment_ID, p.Payment_amount, p.Subtotal_amount, p.SST_amount, 
-                           p.Payment_status, p.Created_at, p.Paid_at, r.Name AS Restaurant_Name
-                    FROM Payment p
-                    LEFT JOIN Restaurant r ON p.Restaurant_ID = r.Restaurant_ID
-                    WHERE p.User_ID = @userId ORDER BY p.Created_at DESC", conn);
-                cmd.Parameters.AddWithValue("@userId", userId);
-
-                using (var reader = cmd.ExecuteReader())
+                var bill = new Bill
                 {
-                    while (reader.Read())
-                    {
-                        bills.Add(new Bill
-                        {
-                            Payment_ID = Convert.ToInt32(reader["Payment_ID"]),
-                            Payment_amount = Convert.ToDecimal(reader["Payment_amount"]),
-                            Subtotal_amount = Convert.ToDecimal(reader["Subtotal_amount"]),
-                            SST_amount = Convert.ToDecimal(reader["SST_amount"]),
-                            Payment_status = reader["Payment_status"].ToString(),
-                            Created_at = Convert.ToDateTime(reader["Created_at"]),
-                            Paid_at = reader["Paid_at"] != DBNull.Value ? Convert.ToDateTime(reader["Paid_at"]) : Convert.ToDateTime(reader["Created_at"]),
-                            Display_restaurant_name = reader["Restaurant_Name"].ToString() ?? "Multiple Restaurants"
-                        });
-                    }
-                }
+                    Payment_ID = dto.Payment_ID,
+                    Payment_amount = dto.Payment_amount,
+                    Subtotal_amount = dto.Subtotal_amount,
+                    SST_amount = dto.SST_amount,
+                    Payment_status = dto.Payment_status,
+                    Created_at = dto.Created_at,
+                    Paid_at = dto.Paid_at,
+                    Display_restaurant_name = dto.Display_restaurant_name
+                };
 
-                foreach (var bill in bills)
-                {
-                    var itemCmd = new MySqlCommand(@"
-                        SELECT pi.Item_name, pi.Quantity, pi.Unit_amount, pi.Line_total, pi.Sugar_level, pi.Ice_level, pi.Remark 
-                        FROM Payment_Item pi WHERE pi.Payment_ID = @paymentId", conn);
-                    itemCmd.Parameters.AddWithValue("@paymentId", bill.Payment_ID);
-                    using (var itemReader = itemCmd.ExecuteReader())
-                    {
-                        while (itemReader.Read())
-                        {
-                            bill.Items.Add(new BillItem
-                            {
-                                Item_name = itemReader["Item_name"].ToString(),
-                                Quantity = Convert.ToInt32(itemReader["Quantity"]),
-                                Unit_amount = Convert.ToDecimal(itemReader["Unit_amount"]),
-                                Line_total = Convert.ToDecimal(itemReader["Line_total"]),
-                                Sugar_level = itemReader["Sugar_level"].ToString(),
-                                Ice_level = itemReader["Ice_level"].ToString(),
-                                Remark = itemReader["Remark"].ToString()
-                            });
-                        }
-                    }
-                }
+                // 3. Now we fetch the items safely
+                var items = await _context.Database.SqlQueryRaw<BillItem>(@"
+            SELECT pi.Item_name, pi.Quantity, pi.Unit_amount, pi.Line_total, pi.Sugar_level, pi.Ice_level, pi.Remark 
+            FROM Payment_Items pi WHERE pi.Payment_ID = {0}", bill.Payment_ID)
+                    .ToListAsync();
+
+                bill.Items = items;
+                bills.Add(bill);
             }
+
             return View(bills);
         }
 
@@ -245,89 +177,68 @@ namespace CafeDash.Controllers
         // SETTINGS & JSON API ENDPOINTS
         // ==========================================
         [HttpGet]
-        public IActionResult Settings()
+        public async Task<IActionResult> Settings()
         {
             ViewBag.Title = "Settings - Cafe Dash";
 
-            // 🔒 REAL SECURE SESSION CHECK
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
             if (userId == 0) return RedirectToAction("Login", "Account");
 
-            // Fetch the avatar using our CSV helper
             string? avatarPath = Helpers.AvatarCsvHelper.GetAvatarFromCSV(userId);
             ViewBag.ProfileImage = avatarPath ?? "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22150%22 height=%22150%22 fill=%22%23D3D3D3%22/%3E%3Ccircle cx=%2275%22 cy=%2250%22 r=%2230%22 fill=%22white%22/%3E%3Cpath d=%22M 30 90 Q 30 80 75 80 Q 120 80 120 90 L 120 150 Q 120 150 75 150 Q 30 150 30 150 Z%22 fill=%22white%22/%3E%3C/svg%3E";
 
-            var user = new User();
-            using (var conn = new MySqlConnection(_connectionString))
-            {
-                conn.Open();
-                var cmd = new MySqlCommand("SELECT User_Name, Email, Contain_number, Address FROM User WHERE User_ID = @id", conn);
-                cmd.Parameters.AddWithValue("@id", userId);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        user.User_name = reader["User_Name"].ToString();
-                        user.Email = reader["Email"].ToString();
-                        user.Contain_number = reader["Contain_number"].ToString();
-                        user.Address = reader["Address"].ToString();
-                    }
-                }
-            }
+            var user = await _context.Users
+                .Where(u => u.User_ID == userId)
+                .Select(u => new User { User_name = u.User_name, Email = u.Email, Contain_number = u.Contain_number, Address = u.Address })
+                .FirstOrDefaultAsync() ?? new User();
+
             return View(user);
         }
 
         [HttpPost]
-        public IActionResult SaveProfile([FromForm] string full_name, [FromForm] string email, [FromForm] string phone, [FromForm] string address)
+        public async Task<IActionResult> SaveProfile([FromForm] string full_name, [FromForm] string email, [FromForm] string phone, [FromForm] string address)
         {
-            // 🔒 SECURE JSON CHECK - Return error instead of redirect so JS fetch doesn't break
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
             if (userId == 0) return Json(new { success = false, message = "Unauthorized. Please log in." });
 
-            using (var conn = new MySqlConnection(_connectionString))
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.User_ID == userId);
+            if (user != null)
             {
-                conn.Open();
-                var cmd = new MySqlCommand("UPDATE User SET User_Name=@n, Email=@e, Contain_number=@p, Address=@a WHERE User_ID=@id", conn);
-                cmd.Parameters.AddWithValue("@n", full_name);
-                cmd.Parameters.AddWithValue("@e", email);
-                cmd.Parameters.AddWithValue("@p", phone);
-                cmd.Parameters.AddWithValue("@a", address);
-                cmd.Parameters.AddWithValue("@id", userId);
+                user.User_name = full_name;
+                user.Email = email;
+                user.Contain_number = phone;
+                user.Address = address;
 
-                if (cmd.ExecuteNonQuery() > 0) return Json(new { success = true });
+                await _context.SaveChangesAsync();
+                return Json(new { success = true });
             }
+
             return Json(new { success = false, message = "Database update failed." });
         }
 
         [HttpPost]
         public IActionResult UploadAvatar(IFormFile profileImage)
         {
-            // 🔒 SECURE JSON CHECK
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
             if (userId == 0) return Json(new { success = false, message = "Unauthorized. Please log in." });
 
             if (profileImage != null && profileImage.Length > 0)
             {
-                // Ensure the avatars folder exists in wwwroot/material/avatars
                 string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", "avatars");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-                // We add a timestamp (like PHP's time()) so the browser doesn't cache the old picture!
                 string ext = Path.GetExtension(profileImage.FileName);
                 string fileName = $"avatar_{userId}_{DateTimeOffset.Now.ToUnixTimeSeconds()}{ext}";
                 string filePath = Path.Combine(uploadsFolder, fileName);
 
-                // Save the image file
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     profileImage.CopyTo(stream);
                 }
 
-                // Save the path to the CSV
                 string relativePath = $"/material/avatars/{fileName}";
                 Helpers.AvatarCsvHelper.SaveAvatarToCSV(userId, relativePath);
 
-                // WE MUST RETURN THE FILEPATH SO THE JAVASCRIPT CAN SHOW THE IMAGE!
                 return Json(new
                 {
                     success = true,
@@ -341,13 +252,11 @@ namespace CafeDash.Controllers
         }
 
         [HttpPost]
-        public IActionResult ChangePassword([FromForm] string current_password, [FromForm] string new_password, [FromForm] string confirm_password)
+        public async Task<IActionResult> ChangePassword([FromForm] string current_password, [FromForm] string new_password, [FromForm] string confirm_password)
         {
-            // 🔒 SECURE JSON CHECK
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
             if (userId == 0) return Json(new { success = false, message = "Not logged in" });
 
-            // Validation (Matching your exact PHP rules)
             if (string.IsNullOrEmpty(current_password)) return Json(new { success = false, message = "Please enter current password" });
             if (string.IsNullOrEmpty(new_password)) return Json(new { success = false, message = "Please enter new password" });
             if (string.IsNullOrEmpty(confirm_password)) return Json(new { success = false, message = "Please confirm new password" });
@@ -355,48 +264,30 @@ namespace CafeDash.Controllers
             if (new_password.Length < 6) return Json(new { success = false, message = "New password must be at least 6 characters long" });
             if (current_password == new_password) return Json(new { success = false, message = "New password cannot be the same as current password" });
 
-            using (var conn = new MySqlConnection(_connectionString))
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.User_ID == userId);
+            if (user == null) return Json(new { success = false, message = "User not found." });
+
+            bool passwordVerified = false;
+            if (current_password == user.Password)
             {
-                conn.Open();
-                var cmd = new MySqlCommand("SELECT Password FROM User WHERE User_ID = @id", conn);
-                cmd.Parameters.AddWithValue("@id", userId);
-
-                string dbPassword = cmd.ExecuteScalar()?.ToString() ?? "";
-                bool passwordVerified = false;
-
-                // Support legacy plain text or BCrypt hashed passwords
-                if (current_password == dbPassword)
-                {
-                    passwordVerified = true;
-                }
-                else
-                {
-                    try { passwordVerified = BCrypt.Net.BCrypt.Verify(current_password, dbPassword); }
-                    catch { passwordVerified = false; }
-                }
-
-                if (!passwordVerified) return Json(new { success = false, message = "Current password is incorrect" });
-
-                // Hash the new password and save it
-                string hashedNewPassword = BCrypt.Net.BCrypt.HashPassword(new_password);
-                var updateCmd = new MySqlCommand("UPDATE User SET Password = @pwd WHERE User_ID = @id", conn);
-                updateCmd.Parameters.AddWithValue("@pwd", hashedNewPassword);
-                updateCmd.Parameters.AddWithValue("@id", userId);
-
-                if (updateCmd.ExecuteNonQuery() > 0)
-                {
-                    return Json(new { success = true, message = "Password updated successfully" });
-                }
+                passwordVerified = true;
+            }
+            else
+            {
+                try { passwordVerified = BCrypt.Net.BCrypt.Verify(current_password, user.Password); }
+                catch { passwordVerified = false; }
             }
 
-            return Json(new { success = false, message = "Database update failed." });
+            if (!passwordVerified) return Json(new { success = false, message = "Current password is incorrect" });
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(new_password);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Password updated successfully" });
         }
 
-        // ==========================================
-        // CAFE SEARCH JSON API
-        // ==========================================
         [HttpGet]
-        public IActionResult SearchCafe(string q)
+        public async Task<IActionResult> SearchCafe(string q)
         {
             if (string.IsNullOrWhiteSpace(q))
             {
@@ -405,49 +296,64 @@ namespace CafeDash.Controllers
 
             string keyword = q.Trim();
 
-            using (var conn = new MySqlConnection(_connectionString))
+            // Try exact match first
+            var exactCafe = await _context.Set<Restaurant>()
+                .FirstOrDefaultAsync(r => r.Name!.ToLower() == keyword.ToLower());
+
+            if (exactCafe != null)
             {
-                conn.Open();
-
-                // 1. Try an exact match first
-                var exactCmd = new MySqlCommand("SELECT Restaurant_ID, Name FROM Restaurant WHERE LOWER(Name) = LOWER(@q) LIMIT 1", conn);
-                exactCmd.Parameters.AddWithValue("@q", keyword);
-
-                using (var reader = exactCmd.ExecuteReader())
+                return Json(new
                 {
-                    if (reader.Read())
-                    {
-                        return Json(new
-                        {
-                            success = true,
-                            found = true,
-                            cafeId = Convert.ToInt32(reader["Restaurant_ID"]),
-                            cafeName = reader["Name"].ToString()
-                        });
-                    }
-                }
-
-                // 2. Fall back to a partial match
-                var partialCmd = new MySqlCommand("SELECT Restaurant_ID, Name FROM Restaurant WHERE Name LIKE @likeQ ORDER BY Name ASC LIMIT 1", conn);
-                partialCmd.Parameters.AddWithValue("@likeQ", "%" + keyword + "%");
-
-                using (var reader = partialCmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        return Json(new
-                        {
-                            success = true,
-                            found = true,
-                            cafeId = Convert.ToInt32(reader["Restaurant_ID"]),
-                            cafeName = reader["Name"].ToString()
-                        });
-                    }
-                }
+                    success = true,
+                    found = true,
+                    cafeId = exactCafe.Restaurant_ID,
+                    cafeName = exactCafe.Name
+                });
             }
 
-            // 3. No cafe found
+            // Fall back to partial match
+            var partialCafe = await _context.Set<Restaurant>()
+                .Where(r => r.Name!.Contains(keyword))
+                .OrderBy(r => r.Name)
+                .FirstOrDefaultAsync();
+
+            if (partialCafe != null)
+            {
+                return Json(new
+                {
+                    success = true,
+                    found = true,
+                    cafeId = partialCafe.Restaurant_ID,
+                    cafeName = partialCafe.Name
+                });
+            }
+
             return Json(new { success = true, found = false, message = "No cafe found." });
         }
     }
-}
+
+    // Helper DTO for mapping raw queries safely
+    // Helper DTO for mapping raw queries safely
+    public class FoodItemDTO
+    {
+        public int Food_ID { get; set; }
+        public string? Name { get; set; }
+        public string? Food_type { get; set; }
+        public string? detail { get; set; }
+        public decimal? amount { get; set; }
+    }
+
+    // BillDto goes right here!
+    public class BillDto
+    {
+        public int Payment_ID { get; set; }
+        public decimal Payment_amount { get; set; }
+        public decimal Subtotal_amount { get; set; }
+        public decimal SST_amount { get; set; }
+        public string? Payment_status { get; set; }
+        public DateTime Created_at { get; set; }
+        public DateTime? Paid_at { get; set; }
+        public string? Display_restaurant_name { get; set; }
+    }
+
+} // <--- THIS MUST BE THE LAST LINE OF THE FILE (It closes the namespace)

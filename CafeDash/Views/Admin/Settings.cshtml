@@ -1,120 +1,58 @@
-﻿@model CafeDash.Models.User
-@{
-    Layout = "_CustomerLayout";
+﻿@{
+    ViewBag.Title = "Admin Settings - CafeDash";
 }
 
 <div class="main">
-    <div class="main-navbar">
+    <div class="main-navbar" style="margin-bottom: 20px;">
         <div class="main-title">
             <h1>Settings</h1>
         </div>
-        <div class="profile">
-            <a class="cart" href="/Home/Index"><ion-icon name="home-outline"></ion-icon></a>
-        </div>
+        <a href="/Admin/Settings" style="text-decoration: none; color: inherit;">
+            <div class="profile" style="cursor: pointer;">
+                <span class="user"><ion-icon name="people-circle-outline"></ion-icon></span>
+                <strong>Admin</strong>
+            </div>
+        </a>
     </div>
 
-    <!-- Notification Toast Area -->
-    <div id="topToast" class="top-toast" role="status" aria-live="polite"></div>
+    @if (!string.IsNullOrEmpty(TempData["msg"]?.ToString()))
+    {
+        string msg = TempData["msg"]?.ToString()!;
+        bool isError = msg.Contains("incorrect", StringComparison.OrdinalIgnoreCase) || msg.Contains("match", StringComparison.OrdinalIgnoreCase);
+        <div style="background: var(--whiteColor, #fff); color: var(--primaryColor, #b5651d); padding: 15px; border-radius: 8px; margin: 20px 0; font-weight: bold; border-left: 5px solid var(--primaryColor, #b5651d); box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <i class='bx bx-info-circle'></i> @msg
+        </div>
+    }
 
     <div class="main-menus">
-        <div class="setting-content">
+        <div id="account" class="setting-content">
+            <h2 style="color: var(--darkBrown, #333); margin-bottom: 20px;">Account Settings</h2>
 
-            <!-- 1. PROFILE PICTURE UPLOAD -->
-            <div class="profile-header" style="text-align: center; margin-bottom: 30px;">
-                <div class="profile-image-container" style="position: relative; display: inline-block;">
-                    <img src="@ViewBag.ProfileImage" alt="Profile" id="profileImagePreview"
-                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primaryColor);">
+            <form action="/Admin/UpdateAdminPassword" method="POST" class="setting-form" style="max-width: 500px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 
-                    <label for="avatarUploadInput" class="upload-btn" style="position: absolute; bottom: 0; right: 0; background: var(--primaryColor); color: white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white;">
-                        <ion-icon name="camera-outline"></ion-icon>
-                    </label>
-                    <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" onchange="forceUploadPicture(this)">
-                </div>
-                <h2 style="margin-top: 10px;">@Model.User_name</h2>
-            </div>
-
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-
-                <!-- 2. PERSONAL INFORMATION FORM -->
-                <div style="flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                    <h3 style="margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Personal Information</h3>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Full Name</label>
-                        <input type="text" id="profileFullName" value="@Model.User_name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Email</label>
-                        <input type="email" id="profileEmail" value="@Model.Email" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Phone</label>
-                        <input type="text" id="profilePhone" value="@Model.Contain_number" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Address</label>
-                        <textarea id="profileAddress" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">@Model.Address</textarea>
-                    </div>
-                    <button type="button" id="saveProfileBtn" style="width: 100%; padding: 10px; background: var(--primaryColor); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Save Changes</button>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px; color: var(--blackColor, #333);">Current Password</label>
+                    <input type="password" name="current_password" placeholder="Enter current password" required
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;">
                 </div>
 
-                <!-- 3. CHANGE PASSWORD FORM -->
-                <div style="flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                    <h3 style="margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Change Password</h3>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Current Password</label>
-                        <input type="password" id="accountCurrentPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">New Password</label>
-                        <input type="password" id="accountNewPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Confirm New Password</label>
-                        <input type="password" id="accountConfirmPassword" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                    </div>
-                    <button type="button" id="accountUpdatePasswordBtn" style="width: 100%; padding: 10px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Update Password</button>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px; color: var(--blackColor, #333);">New Password</label>
+                    <input type="password" name="new_password" placeholder="Enter new password" required
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;">
                 </div>
 
-            </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px; color: var(--blackColor, #333);">Confirm Password</label>
+                    <input type="password" name="confirm_password" placeholder="Confirm new password" required
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+                </div>
+
+                <button type="submit" class="save-btn"
+                        style="background: var(--primaryColor, #b5651d); color: white; border: none; padding: 12px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; width: 100%;">
+                    Update Password
+                </button>
+            </form>
         </div>
     </div>
 </div>
-
-<!-- Notice how the script is directly in the page now, completely outside of any Section tags! -->
-<script>
-    function forceUploadPicture(inputElement) {
-        // 1. Check if a file was actually selected
-        if (!inputElement.files || inputElement.files.length === 0) {
-            return;
-        }
-
-        const file = inputElement.files[0];
-        alert("1. IT'S ALIVE! You selected: " + file.name + ". Sending to C#...");
-
-        const formData = new FormData();
-        formData.append('profileImage', file);
-
-        // 2. Send to C#
-        fetch('/Home/UploadAvatar', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            alert("2. C# Received it! Status: " + response.status);
-            return response.json();
-        })
-        .then(data => {
-            alert("3. C# says: " + JSON.stringify(data));
-            
-            if (data.success) {
-                // Instantly update the image!
-                document.getElementById('profileImagePreview').src = data.filepath + "?t=" + new Date().getTime();
-            } else {
-                alert("Error from C#: " + data.message);
-            }
-        })
-        .catch(error => {
-            alert("4. CRASH: " + error);
-        });
-    }
-</script>

@@ -11,6 +11,9 @@
     <!-- Use ASP.NET tilde syntax to load static files -->
     <link rel="stylesheet" href="~/css/style.css">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
     <style>
             .error-box {
                 background: rgba(255, 77, 77, 0.2);
@@ -42,6 +45,11 @@
                 {
                     <div class="error-box"><i class='bx bx-error-circle'></i> @ViewBag.Error</div>
                 }
+                <!-- Also check TempData for CAPTCHA errors -->
+                @if (TempData["msg"] != null)
+                {
+                    <div class="error-box"><i class='bx bx-error-circle'></i> @TempData["msg"]</div>
+                }
 
                 <div class="textbox">
                     <input type="text" name="User_name" placeholder="Username" required>
@@ -61,6 +69,11 @@
                     <div class="link">
                         <a href="/Account/ForgotPassword">Forgot password?</a>
                     </div>
+                </div>
+
+                <!-- 2. ADDED THE CAPTCHA CHECKBOX HERE -->
+                <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                    <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
                 </div>
 
                 <button type="submit" class="btn auth-btn">Login</button>

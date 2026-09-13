@@ -27,7 +27,7 @@
                             <span>Status: @bill.Payment_status</span>
                         </div>
                         <p style="margin-top:6px; color:#555;">Restaurant: @bill.Display_restaurant_name</p>
-                        <p style="color:#555;">Paid at: @bill.Paid_at.ToString("dd MMM yyyy, hh:mm tt")</p>
+                        <p style="color:#555;">Paid at: @string.Format("{0:dd MMM yyyy, hh:mm tt}", bill.Paid_at)</p>
 
                         <table style="width:100%; border-collapse:collapse; margin-top:10px;">
                             <thead>
