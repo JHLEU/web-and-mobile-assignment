@@ -8,6 +8,7 @@ builder.Services.AddDbContext<CafeDash.Data.ApplicationDbContext>(options =>
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddMemoryCache();
 
 // Add session for Admin Login
 builder.Services.AddSession(options =>

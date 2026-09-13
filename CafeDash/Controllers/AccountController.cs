@@ -1,7 +1,8 @@
-﻿using CafeDash.Data;
+using CafeDash.Data;
 using CafeDash.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
@@ -12,10 +13,52 @@ namespace CafeDash.Controllers
     public class AccountController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMemoryCache _cache;
+        private const int MaxFailedAttempts = 3;
+        private const int BlockDurationMinutes = 2;
 
-        public AccountController(ApplicationDbContext context)
+        public AccountController(ApplicationDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
+        }
+
+        private (bool isBlocked, int remainingSeconds) CheckLoginBlocked(string key)
+        {
+            if (_cache.TryGetValue($"login_blocked_{key}", out DateTime blockUntil))
+            {
+                if (blockUntil > DateTime.UtcNow)
+                {
+                    int remaining = (int)Math.Ceiling((blockUntil - DateTime.UtcNow).TotalSeconds);
+                    return (true, remaining);
+                }
+                _cache.Remove($"login_blocked_{key}");
+                _cache.Remove($"login_attempts_{key}");
+            }
+            return (false, 0);
+        }
+
+        private void IncrementFailedAttempts(string key)
+        {
+            int attempts = _cache.GetOrCreate($"login_attempts_{key}", entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(BlockDurationMinutes);
+                return 0;
+            }) + 1;
+
+            _cache.Set($"login_attempts_{key}", attempts, TimeSpan.FromMinutes(BlockDurationMinutes));
+
+            if (attempts >= MaxFailedAttempts)
+            {
+                _cache.Set($"login_blocked_{key}", DateTime.UtcNow.AddMinutes(BlockDurationMinutes),
+                    TimeSpan.FromMinutes(BlockDurationMinutes));
+            }
+        }
+
+        private void ResetLoginAttempts(string key)
+        {
+            _cache.Remove($"login_attempts_{key}");
+            _cache.Remove($"login_blocked_{key}");
         }
 
         // Shows the Welcome Landing Page
@@ -37,6 +80,17 @@ namespace CafeDash.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(string User_name, string password)
         {
+            string loginKey = (User_name ?? "").Trim().ToLower();
+
+            var (isBlocked, remainingSeconds) = CheckLoginBlocked(loginKey);
+            if (isBlocked)
+            {
+                int mins = remainingSeconds / 60;
+                int secs = remainingSeconds % 60;
+                ViewBag.Error = $"Too many failed login attempts. Please try again in {mins} minute(s) and {secs} second(s).";
+                return View();
+            }
+
             // ==========================================
             // 1. CAPTCHA SECURITY CHECK
             // ==========================================
@@ -83,6 +137,7 @@ namespace CafeDash.Controllers
 
                 if (isValidPassword)
                 {
+                    ResetLoginAttempts(loginKey);
                     HttpContext.Session.SetInt32("user_id", user.User_ID);
                     HttpContext.Session.SetString("User_name", user.User_name ?? "");
 
@@ -90,12 +145,28 @@ namespace CafeDash.Controllers
                 }
                 else
                 {
-                    ViewBag.Error = "Incorrect Password!";
+                    IncrementFailedAttempts(loginKey);
+                    int remaining = MaxFailedAttempts - (_cache.Get<int>($"login_attempts_{loginKey}"));
+                    if (remaining > 0)
+                        ViewBag.Error = $"Incorrect Password! {remaining} attempt(s) remaining before temporary lock.";
+                    else
+                    {
+                        int mins = BlockDurationMinutes;
+                        ViewBag.Error = $"Incorrect Password! Too many failed attempts. Account locked for {mins} minute(s).";
+                    }
                 }
             }
             else
             {
-                ViewBag.Error = "User not found!";
+                IncrementFailedAttempts(loginKey);
+                int remaining = MaxFailedAttempts - (_cache.Get<int>($"login_attempts_{loginKey}"));
+                if (remaining > 0)
+                    ViewBag.Error = $"User not found! {remaining} attempt(s) remaining before temporary lock.";
+                else
+                {
+                    int mins = BlockDurationMinutes;
+                    ViewBag.Error = $"User not found! Too many failed attempts. Login locked for {mins} minute(s).";
+                }
             }
 
             return View();
