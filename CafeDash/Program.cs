@@ -19,6 +19,12 @@ builder.Services.AddSession(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<CafeDash.Data.ApplicationDbContext>();
+    await CafeDash.Data.DatabaseSeeder.SeedRestaurantsAsync(context);
+}
+
 // Initialize Stripe using your Secret Key from appsettings.json
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 

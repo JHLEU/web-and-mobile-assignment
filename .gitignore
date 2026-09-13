@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 #ignore appsettings
 appsettings.json
+CafeDash/Data/DatabaseSeeder.cs

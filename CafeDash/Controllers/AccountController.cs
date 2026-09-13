@@ -210,13 +210,25 @@ namespace CafeDash.Controllers
 
             if (user != null)
             {
-                // Note: For full EF compliance on token resets, password_resets can be modeled or handled via raw SQL execution if needed. 
-                // Using EF execution context simulation for token storage:
                 string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLower();
                 string tokenHash = HashToken(token);
-                DateTime expiresAt = DateTime.Now.AddHours(1);
+                DateTime now = DateTime.UtcNow;
 
-                // Clear old tokens & save new token using database execute or standard patterns
+                // A reset link is only useful if its hashed token is persisted.  Keep
+                // one active token per user so a newer request invalidates older links.
+                var existingTokens = await _context.PasswordResets
+                    .Where(reset => reset.user_id == user.User_ID)
+                    .ToListAsync();
+                _context.PasswordResets.RemoveRange(existingTokens);
+                _context.PasswordResets.Add(new PasswordReset
+                {
+                    user_id = user.User_ID,
+                    token_hash = tokenHash,
+                    expires_at = now.AddHours(1),
+                    created_at = now
+                });
+                await _context.SaveChangesAsync();
+
                 string resetLink = Url.Action("ResetPassword", "Account", new { token = token }, Request.Scheme)!;
 
                 try
@@ -253,9 +265,9 @@ namespace CafeDash.Controllers
         // RESET PASSWORD
         // ==========================================
         [HttpGet]
-        public IActionResult ResetPassword(string token)
+        public async Task<IActionResult> ResetPassword(string token)
         {
-            if (string.IsNullOrWhiteSpace(token))
+            if (string.IsNullOrWhiteSpace(token) || !await HasValidResetToken(token))
             {
                 ViewBag.Error = "Reset token is missing or invalid.";
             }
@@ -264,9 +276,15 @@ namespace CafeDash.Controllers
         }
 
         [HttpPost]
-        public IActionResult ResetPassword(string token, string password, string confirm_password)
+        public async Task<IActionResult> ResetPassword(string token, string password, string confirm_password)
         {
             ViewBag.Token = token;
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                ViewBag.Error = "Reset token is missing or invalid.";
+                return View();
+            }
 
             if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
             {
@@ -280,9 +298,44 @@ namespace CafeDash.Controllers
                 return View();
             }
 
-            // Password reset token table integration can map here once structured as a DbSet.
+            string tokenHash = HashToken(token);
+            var passwordReset = await _context.PasswordResets
+                .FirstOrDefaultAsync(reset => reset.token_hash == tokenHash && reset.expires_at > DateTime.UtcNow);
+
+            if (passwordReset == null)
+            {
+                ViewBag.Error = "This reset link is invalid or has expired. Please request a new one.";
+                return View();
+            }
+
+            var user = await _context.Users.FindAsync(passwordReset.user_id);
+            if (user == null)
+            {
+                _context.PasswordResets.Remove(passwordReset);
+                await _context.SaveChangesAsync();
+                ViewBag.Error = "This reset link is invalid. Please request a new one.";
+                return View();
+            }
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(password);
+            _context.PasswordResets.Remove(passwordReset);
+            await _context.SaveChangesAsync();
+
+            ViewBag.Token = null;
             ViewBag.Success = "Your password has been updated. You can now login.";
             return View();
+        }
+
+        private Task<bool> HasValidResetToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return Task.FromResult(false);
+            }
+
+            string tokenHash = HashToken(token);
+            return _context.PasswordResets
+                .AnyAsync(reset => reset.token_hash == tokenHash && reset.expires_at > DateTime.UtcNow);
         }
 
         // Helper method to verify the CAPTCHA with Google
