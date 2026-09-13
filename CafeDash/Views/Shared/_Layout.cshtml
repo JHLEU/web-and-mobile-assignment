@@ -25,9 +25,10 @@
 
         <div class="sidebar-logout">
             <!-- This secure form is what makes the Logout button actually work in C#! -->
-            <form action="/Admin/Logout_btn" method="POST" style="display: inline;">
-                <button type="submit" style="background: none; border: none; color: inherit; font: inherit; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px;">
-                    <ion-icon name="log-out-outline"></ion-icon>Logout
+            <form method="POST" action="/Admin/Logout_btn" style="margin: 0;">
+                <button type="submit" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: inherit; font-weight: inherit; padding: 0;">
+                    <ion-icon name="log-out-outline"></ion-icon>
+                    <span>Logout</span>
                 </button>
             </form>
         </div>
