@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient; // Swapped to Microsoft SQL Server!
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using CafeDash.Models;
 using System;
 using System.Collections.Generic;
@@ -10,10 +11,52 @@ namespace CafeDash.Controllers;
 public class AdminController : Controller
 {
     private readonly string _connectionString;
+    private readonly IMemoryCache _cache;
+    private const int MaxFailedAttempts = 3;
+    private const int BlockDurationMinutes = 2;
 
-    public AdminController(IConfiguration configuration)
+    public AdminController(IConfiguration configuration, IMemoryCache cache)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+        _cache = cache;
+    }
+
+    private (bool isBlocked, int remainingSeconds) CheckLoginBlocked(string key)
+    {
+        if (_cache.TryGetValue($"admin_login_blocked_{key}", out DateTime blockUntil))
+        {
+            if (blockUntil > DateTime.UtcNow)
+            {
+                int remaining = (int)Math.Ceiling((blockUntil - DateTime.UtcNow).TotalSeconds);
+                return (true, remaining);
+            }
+            _cache.Remove($"admin_login_blocked_{key}");
+            _cache.Remove($"admin_login_attempts_{key}");
+        }
+        return (false, 0);
+    }
+
+    private void IncrementFailedAttempts(string key)
+    {
+        int attempts = _cache.GetOrCreate($"admin_login_attempts_{key}", entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(BlockDurationMinutes);
+            return 0;
+        }) + 1;
+
+        _cache.Set($"admin_login_attempts_{key}", attempts, TimeSpan.FromMinutes(BlockDurationMinutes));
+
+        if (attempts >= MaxFailedAttempts)
+        {
+            _cache.Set($"admin_login_blocked_{key}", DateTime.UtcNow.AddMinutes(BlockDurationMinutes),
+                TimeSpan.FromMinutes(BlockDurationMinutes));
+        }
+    }
+
+    private void ResetLoginAttempts(string key)
+    {
+        _cache.Remove($"admin_login_attempts_{key}");
+        _cache.Remove($"admin_login_blocked_{key}");
     }
 
     // =========================================================
@@ -251,6 +294,17 @@ public class AdminController : Controller
     [HttpPost]
     public IActionResult Admin_login_btn(string admin_name, string admin_password)
     {
+        string loginKey = (admin_name ?? "").Trim().ToLower();
+
+        var (isBlocked, remainingSeconds) = CheckLoginBlocked(loginKey);
+        if (isBlocked)
+        {
+            int mins = remainingSeconds / 60;
+            int secs = remainingSeconds % 60;
+            TempData["error_message"] = $"Too many failed login attempts. Please try again in {mins} minute(s) and {secs} second(s).";
+            return RedirectToAction("Login");
+        }
+
         using (var conn = new SqlConnection(_connectionString))
         {
             conn.Open();
@@ -264,18 +318,29 @@ public class AdminController : Controller
                 {
                     if (admin_password == reader["Password"].ToString())
                     {
+                        ResetLoginAttempts(loginKey);
                         HttpContext.Session.SetInt32("admin_id", Convert.ToInt32(reader["Admin_ID"]));
                         HttpContext.Session.SetString("admin_name", reader["Name"].ToString()!);
                         return RedirectToAction("Index");
                     }
                     else
                     {
-                        TempData["error_message"] = "Incorrect Admin Password!";
+                        IncrementFailedAttempts(loginKey);
+                        int remaining = MaxFailedAttempts - (_cache.Get<int>($"admin_login_attempts_{loginKey}"));
+                        if (remaining > 0)
+                            TempData["error_message"] = $"Incorrect Admin Password! {remaining} attempt(s) remaining before temporary lock.";
+                        else
+                            TempData["error_message"] = $"Incorrect Admin Password! Too many failed attempts. Login locked for {BlockDurationMinutes} minute(s).";
                     }
                 }
                 else
                 {
-                    TempData["error_message"] = "Admin account not found!";
+                    IncrementFailedAttempts(loginKey);
+                    int remaining = MaxFailedAttempts - (_cache.Get<int>($"admin_login_attempts_{loginKey}"));
+                    if (remaining > 0)
+                        TempData["error_message"] = $"Admin account not found! {remaining} attempt(s) remaining before temporary lock.";
+                    else
+                        TempData["error_message"] = $"Admin account not found! Too many failed attempts. Login locked for {BlockDurationMinutes} minute(s).";
                 }
             }
         }
