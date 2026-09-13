@@ -1,0 +1,137 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CafeDash | Register</title>
+    <link rel="stylesheet" href="~/css/register.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+            .error-box {
+                background: rgba(255, 77, 77, 0.2);
+                border: 1px solid #ff4d4d;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: left;
+                font-size: 14px;
+            }
+
+            .success-box {
+                background: rgba(39, 174, 96, 0.2);
+                border: 1px solid #27ae60;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 14px;
+            }
+    </style>
+</head>
+<body>
+    <video autoplay muted loop id="myVideo">
+        <source src="~/material/images/coffee-login.mp4" type="video/mp4">
+    </video>
+
+    <div class="content">
+        <div class="wrapper register-wrapper">
+            <form action="/Account/Register" method="post" id="registerForm" novalidate>
+                <h1>Sign Up</h1>
+                <div class="logo">
+                    <img src="~/material/images/logo.png" alt="logo" style="width:180px;height:180px;">
+                </div>
+
+                @if (ViewBag.Error != null)
+                {
+                    <div class="error-box">
+                        <i class='bx bx-error-circle'></i> @ViewBag.Error
+                    </div>
+                }
+
+                @if (ViewBag.Success != null)
+                {
+                    <div class="success-box">
+                        <i class='bx bx-check-circle'></i> @ViewBag.Success
+                    </div>
+                }
+
+                <div class="textbox">
+                    <input type="text" name="user_name" placeholder="Username" required>
+                    <i class='bx bxs-user'></i>
+                </div>
+
+                <div class="textbox">
+                    <input type="email" name="email" placeholder="Email" required>
+                    <i class='bx bxs-envelope'></i>
+                </div>
+
+                <div class="textbox">
+                    <input type="text" name="phone" placeholder="Phone Number" required>
+                    <i class='bx bxs-phone'></i>
+                </div>
+
+                <div class="textbox">
+                    <input type="text" name="address" placeholder="Address" required>
+                    <i class='bx bxs-map'></i>
+                </div>
+
+                <div class="textbox">
+                    <input type="password" name="password" id="passwordField" placeholder="Password" required>
+                    <i class='bx bxs-lock-alt'></i>
+                    <button type="button" class="toggle-pass" data-target="#passwordField" aria-label="Toggle password visibility">
+                        <i class='bx bx-show'></i>
+                    </button>
+                </div>
+
+                <div class="textbox">
+                    <input type="password" name="confirm_password" id="confirmPasswordField" placeholder="Confirm Password" required>
+                    <i class='bx bxs-lock-alt'></i>
+                    <button type="button" class="toggle-pass" data-target="#confirmPasswordField" aria-label="Toggle confirm password visibility">
+                        <i class='bx bx-show'></i>
+                    </button>
+                </div>
+
+                <button type="submit" class="btn">Create Account</button>
+
+                <div class="register">
+                    <p>Already have an account? <a href="/Account/Login">Login</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+            $(document).ready(function() {
+                $('.toggle-pass').on('click', function() {
+                    const target = $($(this).data('target'));
+                    const icon = $(this).find('i');
+                    const isPassword = target.attr('type') === 'password';
+
+                    target.attr('type', isPassword ? 'text' : 'password');
+                    icon.toggleClass('bx-show bx-hide');
+                });
+
+                // Keep the confirmation error on the client side before the form submits
+                $('#registerForm').on('submit', function(e) {
+                    const password = $('#passwordField').val();
+                    const confirmPassword = $('#confirmPasswordField').val();
+
+                    if (password !== confirmPassword) {
+                        e.preventDefault();
+                        if ($('.client-error').length === 0) {
+                            $('<div class="error-box client-error"><i class="bx bx-error-circle"></i> Password and Confirm Password do not match.</div>')
+                                .insertAfter('.logo');
+                        }
+                    }
+                });
+            });
+    </script>
+</body>
+</html>

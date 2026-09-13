@@ -1,0 +1,150 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+#myVideo {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    z-index: -1;
+    object-fit: cover;
+}
+
+.forgot-password-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #ffffff;
+    text-align: center;
+    padding: 20px;
+}
+
+.forgot-password-wrapper {
+    width: 100%;
+    max-width: 420px;
+    background: rgba(123, 125, 125, 0.6);
+    border-radius: 40px;
+    padding: 30px;
+}
+
+.forgot-password-wrapper h1 {
+    font-size: 36px;
+    text-align: center;
+}
+
+.forgot-password-wrapper .logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.forgot-password-wrapper .textbox {
+    width: 100%;
+    height: 50px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.forgot-password-wrapper input {
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(0, 0, 0, 0.6);
+    outline: none;
+    border-radius: 40px;
+    text-align: center;
+    padding-left: 40px;
+    color: #ffffff;
+}
+
+.forgot-password-wrapper input::placeholder {
+    color: #ffffff;
+}
+
+
+.forgot-password-wrapper .textbox i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ffffff;
+}
+
+.forgot-password-btn,
+.reset-btn {
+    width: 100%;
+    height: 50px;
+    background-color: #4caf50;
+    color: #ffffff;
+    border: none;
+    border-radius: 40px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.forgot-password-btn:hover,
+.reset-btn:hover {
+    background-color: #45a049;
+}
+
+.back-to-login p {
+    color: #ffffff;
+    margin-top: 14px;
+}
+
+.back-to-login a {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.back-to-login a:hover {
+    text-decoration: underline;
+}
+
+.error-box,
+.success-box {
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin: 10px 0 14px;
+    text-align: left;
+    font-size: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.error-box {
+    background: rgba(255, 77, 77, 0.2);
+    border: 1px solid #ff4d4d;
+    color: #ffffff;
+}
+
+.error-box ul {
+    margin-left: 18px;
+    margin-top: 6px;
+}
+
+.success-box {
+    background: rgba(76, 175, 80, 0.24);
+    border: 1px solid #4caf50;
+    color: #ffffff;
+}
+
+.error-box i,
+.success-box i {
+    position: static;
+    transform: none;
+    top: auto;
+    left: auto;
+    color: inherit;
+    flex: 0 0 auto;
+    margin-top: 2px;
+}

@@ -1,0 +1,311 @@
+/* 全局重置，防止 padding 撑开宽度 */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.contact-page {
+    background-color: var(--lightBrown); /* 与 Home 主体背景一致 */
+    font-family: Arial, sans-serif;
+    color: var(--blackColor);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.contact-content {
+    width: calc(100% - 250px);
+    margin-left: 250px;
+    padding: 2% 2% 0 2%;
+    margin-bottom: 24px;
+}
+
+.contact-navbar {
+    margin-bottom: 3%;
+}
+
+.contact-container {
+    max-width: 1000px; /* 限制最大宽度，防止在大屏幕上太散 */
+    margin: 0 auto;
+    background: var(--primaryColor); /* Contact Us 区块改棕色 */
+    padding: 30px;
+    border-radius: 15px;
+}
+
+.contact-container .header-section h1 {
+    color: var(--whiteColor);
+}
+
+.contact-container .header-section p {
+    color: #f6e6d8;
+}
+
+/* 修改了这里：移除 Grid 布局中不必要的固定像素 */
+.contact-container .main-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.contact-container .form-card {
+    background: var(--secondaryColor); /* Get In Touch 区块改黄色 */
+    padding: 30px;
+    border-radius: 10px;
+    width: 100%; /* 关键：使用 100% 宽度，不要写死 900px */
+}
+
+.contact-container h3 {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    color: var(--darkBrown);
+}
+
+.contact-container .form-row {
+    display: flex;
+    gap: 20px;
+}
+
+.contact-container .input-group {
+    margin-bottom: 15px;
+    flex: 1;
+}
+
+.contact-container label {
+    display: block;
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: var(--darkBrown);
+}
+
+.contact-container input,
+.contact-container textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.contact-container .send-btn {
+    background: var(--primaryColor); 
+    color: var(--whiteColor);
+    border: none;
+    padding: 15px;
+    width: 100%;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    margin: 10px 0 30px 0;
+    transition: background 0.3s;
+}
+
+.contact-container .send-btn:hover {
+    background: #8e4d15;
+}
+
+/* 调整联系信息和营业时间的间距 */
+.contact-info-section, .business-hours-section {
+    margin-top: 20px;
+}
+
+.contact-container .info-item {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--darkBrown);
+}
+
+#formStatusNotification {
+    position: fixed;
+    top: 110px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 380px;
+    width: calc(100% - 40px);
+    pointer-events: auto;
+}
+
+.status-notification {
+    border-radius: 12px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+    padding: 18px 20px;
+    color: #ffffff;
+    animation: slideInRight 0.3s ease-out;
+}
+
+.status-notification-content {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.status-notification strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.status-notification ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.status-notification li {
+    margin-bottom: 6px;
+}
+
+.status-notification-error {
+    background: rgba(255, 87, 51, 0.96);
+}
+
+.status-notification-success {
+    background: rgba(34, 162, 91, 0.96);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 760px) {
+    #formStatusNotification {
+        top: 80px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
+}
+
+#formStatusNotification {
+    position: fixed;
+    top: 110px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 380px;
+    width: calc(100% - 40px);
+    pointer-events: auto;
+}
+
+.status-notification {
+    border-radius: 12px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+    padding: 18px 20px;
+    color: #ffffff;
+    animation: slideInRight 0.3s ease-out;
+}
+
+.status-notification-content {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.status-notification strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.status-notification ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.status-notification li {
+    margin-bottom: 6px;
+}
+
+.status-notification-error {
+    background: rgba(255, 87, 51, 0.96);
+}
+
+.status-notification-success {
+    background: rgba(34, 162, 91, 0.96);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 760px) {
+    #formStatusNotification {
+        top: 80px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
+}
+
+/* 营业时间网格 */
+.contact-container .hours-grid {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    gap: 15px;
+    margin-bottom: 20px; /* 给下方留出空间，防止地图贴死 */
+}
+
+.contact-container .hours-grid > div {
+    flex: 1;
+    text-align: left;
+    line-height: 1.6;
+    color: var(--darkBrown);
+}
+
+/* 地图区域 */
+.contact-container .map-section {
+    margin-top: 20px;
+    width: 100%;
+    background: transparent;
+    border: 3px solid var(--darkBrown);
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.contact-container .map-section iframe {
+    display: block;
+    width: 100%;
+    height: 420px;
+    border: 0;
+    border-radius: 0;
+}
+
+@media (max-width: 900px) {
+    .contact-content {
+        width: calc(100% - 250px);
+        margin-left: 250px;
+        padding: 20px;
+    }
+
+    .contact-container .form-row {
+        flex-direction: column;
+    }
+
+    .contact-container .map-section iframe {
+        height: 300px;
+    }
+}
+
+@media (max-width: 640px) {
+    .contact-content {
+        width: 100%;
+        margin-left: 0;
+    }
+}

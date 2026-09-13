@@ -1,0 +1,68 @@
+/* THIS CSS IS FOR THE LOGIN/INDEX PAGE DECORATION SETTINGS */
+
+@import url('https://fonts.googleapis.com/css2?family=roboto:wght@400;700&display=swap');
+
+body, input, button, textarea, select {
+    font:16px 'Roboto', sans-serif;
+}
+
+ .content{
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    color: white;
+    text-align: center;
+ }
+
+ #myVideo {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    z-index: -1;
+    align-items: center;
+}
+
+.wrapper{
+    height: 420px;
+    width: 420px;
+    background: rgba(123, 125, 125, 0.6);
+    border-radius: 40px;
+    outline-color: white;
+    outline: 5px;
+    padding: 30px;
+}
+
+.wrapper h1{
+    font-size: 36px;
+    text-align: center;
+}
+
+.wrapper .logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.wrapper .textbox {
+    width: 100%;
+    height: 50px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.wrapper input {
+    width: calc(100% - 40px);
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    outline: none;
+    border: 2px solid rgba(0, 0, 0, 0.6);
+    border-radius: 40px;
+    text-align: center;
+    padding-left: 40px;
+    color: white;
+}

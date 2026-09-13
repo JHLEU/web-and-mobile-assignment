@@ -1,0 +1,153 @@
+.payment-page .main,
+.payment-success-page .main {
+	padding-top: 3.25%;
+}
+
+.payment-page .main-navbar {
+	margin-bottom: 2.5rem;
+}
+
+.payment-success-page .main-navbar {
+	margin-bottom: 2rem;
+}
+
+.payment-page .main-detail {
+	max-width: 1000px;
+	margin: 0 auto;
+	margin-top: 0;
+	padding-top: 14px;
+}
+
+.payment-success-page .main-detail {
+	max-width: 1000px;
+	margin: 0 auto;
+}
+
+.payment-page .main-menus {
+	padding-top: 0;
+}
+
+.payment-page .main-title {
+	margin-top: 0;
+}
+
+.payment-totals-card {
+	margin-top: 16px;
+	background: #fff;
+	padding: 14px;
+	border-radius: 8px;
+}
+
+.payment-totals-list {
+	max-width: 420px;
+	margin-left: 0;
+	width: 100%;
+}
+
+.payment-total-row {
+	display: grid;
+	grid-template-columns: 220px 130px;
+	justify-content: start;
+	align-items: baseline;
+	column-gap: 10px;
+	margin-bottom: 8px;
+}
+
+.payment-total-label {
+	font-weight: 600;
+	color: #222;
+}
+
+.payment-total-value {
+	font-size: 20px;
+	font-weight: 700;
+	color: #333;
+	white-space: nowrap;
+	text-align: right;
+}
+
+.payment-total-row:last-child {
+	margin-bottom: 0;
+}
+
+.payment-total-row-grand .payment-total-label,
+.payment-total-row-grand .payment-total-value {
+	color: #6E2C00;
+}
+
+.payment-action-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 40px;
+	min-width: 140px;
+	padding: 0 16px;
+	font-weight: 700;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.payment-card-section {
+	margin-top: 14px;
+}
+
+.payment-card-label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 700;
+	font-size: 14px;
+}
+
+.payment-card-row {
+	display: flex;
+	align-items: center;
+	gap: 0;
+}
+
+.payment-card-field {
+	flex: 1;
+	min-width: 0;
+}
+
+.payment-card-element {
+	padding: 12px;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.payment-card-errors {
+	color: red;
+	font-size: 14px;
+	margin-top: 8px;
+}
+
+.payment-card-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 10px;
+}
+
+.payment-action-btn:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+	.payment-total-row {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.payment-card-row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.payment-card-actions {
+		margin-top: 10px;
+	}
+
+	.payment-action-btn {
+		width: 100%;
+	}
+}

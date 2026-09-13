@@ -1,0 +1,113 @@
+﻿@model CafeDash.Models.CafeViewModel
+@{
+    ViewBag.Title = "Cafe Menu - Cafe Dash";
+    Layout = "~/Views/Shared/_CustomerLayout.cshtml";
+}
+
+<link rel="stylesheet" href="~/css/cafe.css">
+
+<div class="main">
+    <div class="main-navbar">
+        <a href="/Home/Index" class="cart"><ion-icon name="arrow-back-outline"></ion-icon></a>
+        <div class="profile">
+            <a class="cart" id="openCartBtn" href="#" aria-label="Open cart"><ion-icon name="cart-outline"></ion-icon></a>
+        </div>
+    </div>
+
+    <div class="main-highlight">
+        <div class="highlight-card" style="width:100%;">
+            <img class="highlight-img" src="~/material/@Model.Restaurant!.Name/shop.jpg" alt="@Model.Restaurant.Name" onerror="this.src='/material/images/default_res.jpg'" style="width:120px;height:120px;">
+            <div class="highlight-desc">
+                <h4>@Model.Restaurant.Name</h4>
+                <p>@Model.Restaurant.Address</p>
+                <p>Rating @Model.Restaurant.Rating.ToString("0.0")</p>
+                <p>Contact: @Model.Restaurant.Contain_number</p>
+                <p>Email: @Model.Restaurant.Email</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-menus">
+        <div class="main-detail">
+            <h2 class="main-title">Food / Beverage Menu</h2>
+            @if (Model.GroupedMenuItems.Count > 0)
+            {
+                foreach (var group in Model.GroupedMenuItems)
+                {
+                    <h3 class="main-title" style="margin: 12px 0; font-size: 18px;">@group.Key</h3>
+                    <div class="detail-wrapper">
+                        @foreach (var item in group.Value)
+                        {
+                            <button type="button" class="detail-card menu-item-trigger"
+                                    data-food-id="@item.Id"
+                                    data-restaurant-id="@Model.Restaurant.Restaurant_ID"
+                                    data-restaurant-name="@Model.Restaurant.Name"
+                                    data-item-name="@item.Name"
+                                    data-item-type="@item.Type"
+                                    data-item-amount="@item.Amount"
+                                    data-is-drink="@(item.IsDrink ? "1" : "0")">
+                                <img class="detail-img" src="@item.Image" alt="@item.Name" onerror="this.src='/material/images/default_food.jpg'">
+                                <div class="detail-desc">
+                                    <div class="detail-name">
+                                        <h4>@item.Name</h4>
+                                        <p class="detail-sub">@item.Detail</p>
+                                        <p class="detail-price">RM @item.Amount.ToString("0.00")</p>
+                                        <p class="Rating">@item.Type</p>
+                                    </div>
+                                </div>
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <p>No menu items found for this cafe.</p>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- The Customization Modal -->
+<div id="menuModalOverlay" class="menu-modal-overlay" aria-hidden="true">
+    <form id="menuModalForm" class="menu-modal">
+        <h3 id="modalItemTitle">Item</h3>
+        <div class="modal-row">
+            <label class="modal-label">Quantity</label>
+            <div class="qty-box">
+                <button type="button" id="qtyMinus" class="qty-btn">-</button>
+                <input id="itemQty" class="qty-input" type="number" min="1" value="1">
+                <button type="button" id="qtyPlus" class="qty-btn">+</button>
+            </div>
+        </div>
+        <div id="drinkOptions" class="hidden">
+            <div class="modal-row">
+                <label class="modal-label">Sugar Level</label>
+                <div class="option-group">
+                    <label class="option-pill"><input type="radio" name="sugar" value="Less">Less</label>
+                    <label class="option-pill"><input type="radio" name="sugar" value="Normal" checked>Normal</label>
+                    <label class="option-pill"><input type="radio" name="sugar" value="More">More</label>
+                </div>
+            </div>
+            <div class="modal-row">
+                <label class="modal-label">Ice Level</label>
+                <div class="option-group">
+                    <label class="option-pill"><input type="radio" name="ice" value="Less">Less</label>
+                    <label class="option-pill"><input type="radio" name="ice" value="Normal" checked>Normal</label>
+                    <label class="option-pill"><input type="radio" name="ice" value="More">More</label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-row">
+            <label class="modal-label" for="itemRemark">Remark</label>
+            <textarea id="itemRemark" class="remark-input" placeholder="Example: No onion, spicy level 1"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button type="button" id="closeModalBtn" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary">Add</button>
+        </div>
+    </form>
+</div>
+
+<!-- Load specific JS for this page -->
+<script src="~/js/cafe.js"></script>

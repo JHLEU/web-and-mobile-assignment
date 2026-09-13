@@ -1,0 +1,91 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CafeDash | Login</title>
+    <!-- Use ASP.NET tilde syntax to load static files -->
+    <link rel="stylesheet" href="~/css/style.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <style>
+            .error-box {
+                background: rgba(255, 77, 77, 0.2);
+                border: 1px solid #ff4d4d;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 14px;
+            }
+    </style>
+</head>
+<body>
+    <video autoplay muted loop id="myVideo">
+        <source src="~/material/images/coffee-login.mp4" type="video/mp4">
+    </video>
+
+    <div class="content auth-content">
+        <div class="wrapper auth-wrapper">
+            <!-- Ensure this points to our secure C# Account Controller -->
+            <form action="/Account/Login" method="post" class="auth-form">
+                <h1>Login</h1>
+                <div class="logo">
+                    <img src="~/material/images/logo.png" alt="logo" style="width:200px;height:200px;">
+                </div>
+
+                @if (ViewBag.Error != null)
+                {
+                    <div class="error-box"><i class='bx bx-error-circle'></i> @ViewBag.Error</div>
+                }
+
+                <div class="textbox">
+                    <input type="text" name="User_name" placeholder="Username" required>
+                    <i class='bx bxs-user'></i>
+                </div>
+
+                <div class="textbox">
+                    <input type="password" name="password" id="memberLoginPassword" placeholder="Password" required>
+                    <i class='bx bxs-lock-alt'></i>
+                    <button type="button" class="toggle-pass" data-target="#memberLoginPassword" aria-label="Toggle password visibility">
+                        <i class='bx bx-show'></i>
+                    </button>
+                </div>
+
+                <div class="remember-pass">
+                    <label><input type="checkbox" name="remember">Remember me</label>
+                    <div class="link">
+                        <a href="/Account/ForgotPassword">Forgot password?</a>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn auth-btn">Login</button>
+
+                <div class="register">
+                    <p>Don't have an account? <a href="/Account/Register">Register</a></p>
+                </div>
+
+                <a href="/Account/Welcome" class="back-home">Back to Welcome</a>
+            </form>
+        </div>
+    </div>
+
+    <script>
+            document.querySelectorAll('.toggle-pass').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var target = document.querySelector(button.getAttribute('data-target'));
+                    var icon = button.querySelector('i');
+                    if (!target || !icon) return;
+                    var isPassword = target.getAttribute('type') === 'password';
+                    target.setAttribute('type', isPassword ? 'text' : 'password');
+                    icon.classList.toggle('bx-show', !isPassword);
+                    icon.classList.toggle('bx-hide', isPassword);
+                });
+            });
+    </script>
+</body>
+</html>

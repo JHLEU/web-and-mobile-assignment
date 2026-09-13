@@ -1,0 +1,87 @@
+﻿@model CafeDash.Models.RestaurantViewModel
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="main">
+    <div class="main-navbar">
+        <h1>Restaurant Management</h1>
+        <div class="profile">
+            <span class="user"><ion-icon name="people-circle-outline"></ion-icon></span>
+            <strong>Admin</strong>
+        </div>
+    </div>
+
+    <!-- ADD RESTAURANT -->
+    <div class="main-highlight">
+        <h3>Add New Restaurant</h3>
+        <form action="/Admin/AddRestaurant" method="POST" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <input type="text" name="res_name" placeholder="Restaurant Name" required style="padding: 8px; border-radius: 5px; border: none;">
+            <input type="text" name="res_type" placeholder="Cuisine Type (e.g., Italian)" required style="padding: 8px; border-radius: 5px; border: none;">
+            <input type="email" name="res_email" placeholder="Email" style="padding: 8px; border-radius: 5px; border: none;">
+            <input type="text" name="res_phone" placeholder="Phone Number" style="padding: 8px; border-radius: 5px; border: none;">
+            <textarea name="res_address" placeholder="Full Address" style="grid-column: span 2; padding: 8px; border-radius: 5px; border: none;"></textarea>
+            <button type="submit" style="background: var(--darkBrown); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; grid-column: span 2;">
+                Add Restaurant
+            </button>
+        </form>
+    </div>
+
+    @if (TempData["msg"] != null)
+    {
+        <p style="color: var(--whiteColor); margin: 10px 0; background: var(--primaryColor); padding: 10px; border-radius: 5px;">@TempData["msg"]</p>
+    }
+
+    <!-- EDIT MODE -->
+    @if (Model.SelectedRestaurant != null)
+    {
+        <div class="main-menus">
+            <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                <form action="/Admin/UpdateRestaurant" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="restaurant_id" value="@Model.SelectedRestaurant.Restaurant_ID">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        @{
+                            string shopImage = $"/material/{Model.SelectedRestaurant.Name}/shop.jpg";
+                            string physicalPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "material", Model.SelectedRestaurant.Name, "shop.jpg");
+                            if (!System.IO.File.Exists(physicalPath)) shopImage = "/material/images/default_res.jpg";
+                        }
+                        <img src="@shopImage" style="width: 200px; height: 150px; object-fit: cover; border-radius: 10px; border: 2px solid #ddd;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <input type="text" name="res_name" value="@Model.SelectedRestaurant.Name" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <input type="text" name="res_type" value="@Model.SelectedRestaurant.Restaurant_type" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <input type="email" name="res_email" value="@Model.SelectedRestaurant.Email" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <input type="text" name="res_phone" value="@Model.SelectedRestaurant.Contain_number" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+                        <textarea name="res_address" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">@Model.SelectedRestaurant.Address</textarea>
+                        <button type="submit" style="background: var(--primaryColor); color: white; padding: 15px; border: none; border-radius: 8px;">Update Info</button>
+                    </div>
+                </form>
+
+                <form method="POST" action="/Admin/DeleteRestaurant" onsubmit="return confirm('Permanently delete?');" style="margin-top:20px;">
+                    <input type="hidden" name="restaurant_id" value="@Model.SelectedRestaurant.Restaurant_ID">
+                    <button type="submit" style="background: #c0392b; color: white; padding: 12px; border-radius: 8px; width: 100%;">Remove Restaurant</button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- LIST MODE -->
+        <div class="main-menus">
+            <div class="detail-wrapper" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                @foreach (var row in Model.AllRestaurants)
+                {
+                    <div class="detail-card" style="background:white; cursor: pointer; padding: 15px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="window.location.href='/Admin/Restaurants?edit_id=@row.Restaurant_ID'">
+                        @{
+                            string listShopImage = $"/material/{row.Name}/shop.jpg";
+                            string listPhysicalPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "material", row.Name, "shop.jpg");
+                            if (!System.IO.File.Exists(listPhysicalPath)) listShopImage = "/material/images/default_res.jpg";
+                        }
+                        <img src="@listShopImage" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;">
+                        <h4 style="margin: 10px 0 5px 0;">@row.Name</h4>
+                        <p style="color: #666; font-size: 14px;">@row.Restaurant_type</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

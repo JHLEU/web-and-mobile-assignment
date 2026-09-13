@@ -1,0 +1,72 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CafeDash | Login</title>
+
+    <!-- Link to your original CSS file -->
+    <link rel="stylesheet" href="~/css/style.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+
+    <style>
+            /* Modern Error Styling */
+            .error-box {
+                background: rgba(255, 77, 77, 0.2);
+                border: 1px solid #ff4d4d;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 14px;
+            }
+    </style>
+</head>
+<body>
+    <!-- Background Video -->
+    <video autoplay muted loop id="myVideo">
+        <source src="~/material/images/coffee-login.mp4" type="video/mp4">
+    </video>
+
+    <div class="content">
+        <div class="wrapper">
+            <!-- Point the form to your C# Controller -->
+            <form action="/Admin/Admin_login_btn" method="post">
+                <h1>Admin Login</h1>
+                <div class="logo">
+                    <img src="~/material/images/logo.png" alt="logo" style="width:200px;height:200px;">
+                </div>
+
+                <!-- C# Error Handling -->
+                @if (TempData["error_message"] != null)
+                {
+                    <div class="error-box">
+                        <i class='bx bx-error-circle'></i> @TempData["error_message"]
+                    </div>
+                }
+
+                <div class="textbox">
+                    <input type="text" name="admin_name" placeholder="Admin Username" required>
+                    <i class='bx bxs-user-badge'></i>
+                </div>
+
+                <div class="textbox">
+                    <input type="password" name="admin_password" placeholder="Admin Password" required>
+                    <i class='bx bxs-lock-alt'></i>
+                </div>
+
+                <button type="submit" class="btn">Login</button>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <a href="/" style="color: red; text-decoration: none; font-size: 14px;">Back to Home</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,185 @@
+.main-navbar {
+    margin-bottom: 20px;
+}
+
+.ranking-container {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.ranking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 25px;
+}
+
+.ranking-header h2 {
+    color: var(--darkBrown);
+    margin: 0;
+}
+
+.ranking-header p {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+.ranking-table thead tr {
+    text-align: left;
+    background: #f8f9fa;
+}
+
+.ranking-table th,
+.ranking-table td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.ranking-table th:nth-child(3),
+.ranking-table td:nth-child(3) {
+    text-align: center;
+}
+
+.ranking-table th:nth-child(4),
+.ranking-table td:nth-child(4) {
+    text-align: right;
+}
+
+.ranking-empty,
+.ranking-loading {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+.ranking-error {
+    text-align: center;
+    padding: 40px;
+    color: #c0392b;
+}
+
+.ranking-row:hover {
+    background-color: #fff9f4;
+    transition: background-color 0.3s ease;
+}
+
+.save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.4rem;
+    background: var(--primaryColor);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 12px 24px rgba(175, 96, 26, 0.16);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.save-btn:hover {
+    background: #c17611;
+    transform: translateY(-1px);
+    box-shadow: 0 16px 28px rgba(175, 96, 26, 0.2);
+}
+
+.save-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 16px rgba(175, 96, 26, 0.16);
+}
+
+.save-btn ion-icon {
+    font-size: 1.2rem;
+}
+
+.rank-badge {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    border-radius: 50%;
+    background: var(--primaryColor);
+    color: white;
+    font-weight: bold;
+}
+
+#alertBox {
+    display: none;
+    margin: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+.main-navbar a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.main-navbar .profile {
+    cursor: pointer;
+}
+
+.ranking-loading ion-icon,
+.ranking-error ion-icon {
+    display: block;
+    margin: 0 auto 12px;
+}
+
+.ranking-loading p,
+.ranking-error p {
+    margin: 0;
+}
+
+.ranking-table td.text-restaurant {
+    font-weight: 600;
+    color: var(--blackColor);
+}
+
+.ranking-table td.text-sales {
+    text-align: right;
+    color: #27ae60;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.top-rank {
+    background: #ffc107;
+    color: #000;
+}
+
+.transaction-pill {
+    background: #e1f5fe;
+    color: #0288d1;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    display: inline-block;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

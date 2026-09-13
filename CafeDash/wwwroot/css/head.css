@@ -1,0 +1,12 @@
+/* THIS CSS IS FOR THE HEADER AND FOOTER DECORATION SETTING !! */
+
+header, footer {
+    padding: 10px 10px;
+    background: #ccc;
+}
+
+header h1 {
+    margin: 0px;
+    padding: 20px 60px;
+    background: url(../material/images/logo.png) no-repeat left / 60px;
+}

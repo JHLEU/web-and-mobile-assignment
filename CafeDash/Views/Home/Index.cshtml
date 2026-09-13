@@ -1,0 +1,109 @@
+﻿@model CafeDash.Models.CustomerHomeViewModel
+@{
+    // Notice how we tell this page to use our new Customer Layout!
+    Layout = "~/Views/Shared/_CustomerLayout.cshtml";
+}
+
+<div class="main">
+    <div class="main-navbar">
+        <ion-icon class="menu-toggle" name="menu-outline"></ion-icon>
+        <div class="search">
+            <input type="text" placeholder="What you want to eat?">
+            <button class="search-btn">Search</button>
+        </div>
+        <div class="profile">
+            <a class="cart" id="openCartBtn" href="#" aria-label="Open cart"><ion-icon name="cart-outline"></ion-icon></a>
+            <a class="user" href="/Home/Settings#profile"><ion-icon name="person-outline"></ion-icon></a>
+        </div>
+    </div>
+
+    <!-- TOP RECOMMENDATIONS -->
+    <div class="main-highlight">
+        <div class="main-header">
+            <h2 class="main-title">Top Recommendations</h2>
+        </div>
+        <div class="highlight-wrapper">
+            @foreach (var cafe in Model.TopRestaurants)
+            {
+                string shopImage = $"/material/{cafe.Name}/shop.jpg";
+
+                <a href="/Home/Cafe?id=@cafe.Restaurant_ID" class="highlight-link">
+                    <div class="highlight-card">
+                        <img class="highlight-img" src="@shopImage" alt="@cafe.Name" onerror="this.src='/material/images/default_res.jpg'">
+                        <div class="highlight-desc">
+                            <h4>@cafe.Name</h4>
+                            <p class="highlight-rating">Rating @cafe.Rating.ToString("0.0")</p>
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- CATEGORY FILTERS -->
+    <div class="main-menus">
+        <div class="main-filter">
+            <div>
+                <h2 class="main-title">Menu<br>Category</h2>
+            </div>
+            <div class="filter-wrapper">
+                <div class="filter-card active" data-filter="all">
+                    <div class="filter-icon"><ion-icon name="restaurant-outline"></ion-icon></div>
+                    <p>All Cafe</p>
+                </div>
+                <div class="filter-card" data-filter="coffee">
+                    <div class="filter-icon"><ion-icon name="cafe-outline"></ion-icon></div>
+                    <p>Coffee</p>
+                </div>
+                <div class="filter-card" data-filter="dessert">
+                    <div class="filter-icon"><ion-icon name="ice-cream-outline"></ion-icon></div>
+                    <p>Dessert</p>
+                </div>
+                <div class="filter-card" data-filter="food">
+                    <div class="filter-icon"><ion-icon name="fast-food-outline"></ion-icon></div>
+                    <p>Food</p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- ALL RESTAURANTS LIST -->
+        <div class="main-detail">
+            <h2 class="main-title">Choose Order</h2>
+            <div class="detail-wrapper">
+                @if (Model.AllRestaurants.Count > 0)
+                {
+                    foreach (var cafe in Model.AllRestaurants)
+                    {
+                        // C# logic to assign the filter category based on Restaurant_type
+                        string type = (cafe.Restaurant_type ?? "").ToLower();
+                        string category = "food";
+
+                        if (type.Contains("coffee") || type.Contains("cafe")) category = "coffee";
+                        else if (type.Contains("dessert") || type.Contains("bakery") || type.Contains("cake") || type.Contains("ice")) category = "dessert";
+
+                        string shopImage = $"/material/{cafe.Name}/shop.jpg";
+
+                        <a class="detail-card-link" data-category="@category" href="/Home/Cafe?id=@cafe.Restaurant_ID">
+                            <div class="detail-card">
+                                <img class="detail-img" src="@shopImage" alt="Shop Image" onerror="this.src='/material/images/default_res.jpg'">
+                                <div class="detail-desc">
+                                    <div class="detail-name">
+                                        <h4>@cafe.Name</h4>
+                                        <p class="detail-sub">@cafe.Address</p>
+                                        <p class="Rating">Rating @cafe.Rating.ToString("0.0")</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                }
+                else
+                {
+                    <p>No restaurant found</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

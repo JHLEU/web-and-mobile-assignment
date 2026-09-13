@@ -1,0 +1,79 @@
+﻿@{
+    Layout = "~/Views/Shared/_CustomerLayout.cshtml";
+    ViewBag.BodyClass = "contact-page"; // This brings your background back!
+}
+<link rel="stylesheet" href="~/css/contact_us.css">
+
+<div class="contact-content">
+    <div class="main-navbar contact-navbar">
+        <a href="javascript:history.back()" class="cart" aria-label="Go back"><ion-icon name="arrow-back-outline"></ion-icon></a>
+        <div></div>
+    </div>
+
+    <div class="contact-container">
+        <div class="header-section">
+            <h1>CONTACT US</h1>
+            <p>If you have any questions, please feel free to get in touch with us via phone, text, email, the form below, or even on social media!</p>
+        </div>
+
+        @if (ViewBag.Success != null)
+        {
+            <div style="background-color: #27ae60; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: center;">@ViewBag.Success</div>
+        }
+        @if (ViewBag.Error != null)
+        {
+            <div style="background-color: #e74c3c; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: center;">@ViewBag.Error</div>
+        }
+
+        <div class="main-layout">
+            <div class="form-card">
+                <h3>GET IN TOUCH</h3>
+                <!-- Make sure the form posts directly back to our new C# method! -->
+                <form action="/Home/Contact" method="post">
+                    <div class="form-row" style="display:flex; gap:10px;">
+                        <div style="flex:1;">
+                            <label style="display:block; font-weight:bold; margin-bottom:5px;">NAME</label>
+                            <input type="text" name="name" placeholder="Enter your name*" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="display:block; font-weight:bold; margin-bottom:5px;">PHONE NUMBER</label>
+                            <input type="text" name="phone" placeholder="Enter your phone number*" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                        </div>
+                    </div>
+                    <div style="margin-top:15px;">
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">EMAIL</label>
+                        <input type="email" name="email" placeholder="Enter your email*" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                    </div>
+                    <div style="margin-top:15px;">
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">YOUR MESSAGE</label>
+                        <textarea name="message" placeholder="Type your message here..." required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; height:100px;"></textarea>
+                    </div>
+                    <button type="submit" class="send-btn" style="margin-top:20px; width:100%; padding:12px; background:var(--primaryColor); color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SEND MESSAGE</button>
+                </form>
+
+                <div class="info-section">
+                    <div class="info-card">
+                        <h3>CONTACT INFORMATION</h3>
+                        <div class="info-item"><strong>PHONE:</strong> 012-34567889</div>
+                        <div class="info-item"><strong>ADDRESS:</strong> Tarumt Arena</div>
+                        <div class="info-item"><strong>EMAIL:</strong> IDk@gmail.com</div>
+                    </div>
+                    <div class="info-card">
+                        <h3>BUSINESS HOURS</h3>
+                        <div class="hours-grid">
+                            <div><strong>MON - FRI</strong><br>9:00 am - 8:00 pm</div>
+                            <div><strong>SATURDAY</strong><br>9:00 am - 6:00 pm</div>
+                            <div><strong>SUNDAY</strong><br>9:00 am - 5:00 pm</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-section">
+            <iframe src="https://www.google.com/maps/embed?pb=!3m2!1sen!2sus!4v1774802584519!5m2!1sen!2sus!6m8!1m7!1s03a2Paa1_eoNLnDHt0j4RA!2m2!1d3.213426454237041!2d101.730402997966!3f164.46545407772578!4f-8.614787379248725!5f0.7820865974627469" width="940" height="600" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+    </div>
+</div>
+
+<script src="~/js/contact_us.js"></script>

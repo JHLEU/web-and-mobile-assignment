@@ -1,0 +1,91 @@
+﻿@model List<CafeDash.Models.User>
+@{
+    ViewBag.Title = "Member Management";
+}
+
+<div class="main">
+    <div class="main-navbar" style="margin-bottom: 30px;">
+        <h1>Member Management</h1>
+        <form action="/Admin/Members" method="GET" style="display: flex; gap: 10px;">
+            <input type="text" name="search" placeholder="Search name or email..." value="@ViewBag.SearchTerm" style="padding: 8px; border-radius: 20px; border: 1px solid #ddd; width: 250px;">
+            <button type="submit" class="search-btn" style="padding: 8px 15px;">Search</button>
+        </form>
+    </div>
+
+    @if (TempData["msg"] != null)
+    {
+        string msg = TempData["msg"].ToString()!;
+        bool isError = msg.Contains("error", StringComparison.OrdinalIgnoreCase);
+        <div id="notification-bar" style="position: fixed; top: 20px; right: 20px; max-width: 400px; padding: 16px 20px; border-radius: 8px; background: @(isError ? "#e74c3c" : "#27ae60"); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 12px; z-index: 9999; animation: slideIn 0.3s ease-out, slideOut 3s ease-out 2.7s forwards;">
+            <div style="font-size: 20px;">@(isError ? "❌" : "✓")</div>
+            <div style="flex: 1; font-weight: 500;">@msg</div>
+            <button onclick="document.getElementById('notification-bar').style.display='none';" style="background: transparent; border: none; color: white; font-size: 18px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">✕</button>
+        </div>
+        <style>
+                @@keyframes slideIn {
+                    from {
+                        transform: translateX(420px);
+                        opacity: 0;
+                    }
+
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+
+                @@keyframes slideOut {
+                    from {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+
+                    to {
+                        transform: translateX(420px);
+                        opacity: 0;
+                    }
+                }
+        </style>
+    }
+
+    <div class="main-menus">
+        <div class="detail-wrapper">
+            @if (Model != null && Model.Count > 0)
+            {
+                foreach (var row in Model)
+                {
+                    bool isSuspended = row.Suspend == 1;
+                    <div class="detail-card" style="border: @(isSuspended ? "1px solid #e74c3c" : "none"); padding: 20px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" onmouseover="this.style.boxShadow='0 8px 20px rgba(0,0,0,0.15)'; this.style.transform='translateY(-4px)';" onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'; this.style.transform='translateY(0)';">
+                        <div class="detail-name">
+                            <h4 style="color: #333; font-size: 18px; margin-bottom: 8px;">@row.User_name</h4>
+                            <p class="detail-sub" style="color: @(isSuspended ? "#e74c3c" : "#27ae60"); font-weight: 500;">
+                                @(isSuspended ? "Account Suspended" : "Active Member")
+                            </p>
+                        </div>
+                        <div class="divider" style="margin: 15px 0;"></div>
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                            <form method="POST" action="/Admin/ToggleSuspend">
+                                <input type="hidden" name="user_id" value="@row.User_ID">
+                                <input type="hidden" name="current_status" value="@row.Suspend">
+                                <button type="submit" style="background-color: @(isSuspended ? "#27ae60" : "#f39c12"); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; width: 100%; display: flex; align-items:center; justify-content: center; gap: 8px; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; this.style.transform='scale(1.02)';" onmouseout="this.style.boxShadow='none'; this.style.transform='scale(1)';">
+                                    <ion-icon name="@(isSuspended ? "play-outline" : "pause-outline")"></ion-icon>
+                                    @(isSuspended ? "Unsuspend User" : "Suspend User")
+                                </button>
+                            </form>
+                            <form method="POST" action="/Admin/DeleteUser">
+                                <input type="hidden" name="user_id" value="@row.User_ID">
+                                <button type="submit" style="background-color: #c0392b; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; this.style.transform='scale(1.02)';" onmouseout="this.style.boxShadow='none'; this.style.transform='scale(1)';">
+                                    Delete Member
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <p>No members found.</p>
+            }
+        </div>
+    </div>
+</div>

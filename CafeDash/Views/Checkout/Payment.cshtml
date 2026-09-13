@@ -1,0 +1,156 @@
+﻿@model CafeDash.Models.CheckoutViewModel
+
+<div class="main">
+    <div class="main-navbar">
+        <a href="javascript:history.back()" class="cart"><ion-icon name="arrow-back-outline"></ion-icon></a>
+        <div class="profile">
+            <a class="cart" href="/Home/Index"><ion-icon name="home-outline"></ion-icon></a>
+        </div>
+    </div>
+
+    <div class="main-menus">
+        <div class="main-detail">
+            <h2 class="main-title">Payment Summary</h2>
+
+            @if (Model.Items.Count == 0)
+            {
+                <p>Your cart is empty.</p>
+            }
+            else
+            {
+                <table style="width:100%; border-collapse:collapse; margin-top:12px; background:#fff; border-radius:8px; overflow:hidden;">
+                    <thead>
+                        <tr style="background:#f2f2f2; text-align:left;">
+                            <th style="padding:10px;">Item</th>
+                            <th style="padding:10px;">Quantity</th>
+                            <th style="padding:10px;">Unit Amount</th>
+                            <th style="padding:10px;">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td style="padding:10px; border-top:1px solid #eee;">@item.ItemName</td>
+                                <td style="padding:10px; border-top:1px solid #eee;">@item.Quantity</td>
+                                <td style="padding:10px; border-top:1px solid #eee;">RM @item.UnitAmount.ToString("0.00")</td>
+                                <td style="padding:10px; border-top:1px solid #eee;">RM @item.LineTotal.ToString("0.00")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="payment-totals-card">
+                    <div class="payment-totals-list">
+                        <div class="payment-total-row">
+                            <span class="payment-total-label">Total Amount</span>
+                            <strong class="payment-total-value">RM @Model.Subtotal.ToString("0.00")</strong>
+                        </div>
+                        <div class="payment-total-row">
+                            <span class="payment-total-label">SST (6%)</span>
+                            <strong class="payment-total-value">RM @Model.Sst.ToString("0.00")</strong>
+                        </div>
+                        <div class="payment-total-row payment-total-row-grand">
+                            <span class="payment-total-label">Total Amount + SST</span>
+                            <strong class="payment-total-value">RM @Model.GrandTotal.ToString("0.00")</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="payment-card-section">
+                    <label class="payment-card-label">Card Details</label>
+                    <div class="payment-card-row">
+                        <div class="payment-card-field">
+                            <div id="card-element" class="payment-card-element"></div>
+                        </div>
+                    </div>
+                    <div class="payment-card-actions">
+                        <button type="button" class="search-btn payment-action-btn" id="pay-btn">
+                            Pay Now — RM @Model.GrandTotal.ToString("0.00")
+                        </button>
+                    </div>
+                    <div id="card-errors" class="payment-card-errors"></div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+        const stripe = Stripe('@Model.PublishableKey');
+        const elements = stripe.elements({ locale: 'en' });
+        const cardElement = elements.create('card', {
+            hidePostalCode: true,
+            disableLink: true,
+            style: {
+                base: { fontSize: '16px', color: '#32325d', fontFamily: 'Arial, sans-serif', '::placeholder': { color: '#aab7c4' } },
+                invalid: { color: '#fa755a' }
+            }
+        });
+        cardElement.mount('#card-element');
+
+        cardElement.on('change', (event) => {
+            document.getElementById('card-errors').textContent = event.error ? event.error.message : '';
+        });
+
+        document.getElementById('pay-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('pay-btn');
+            const errorDiv = document.getElementById('card-errors');
+            const original = btn.textContent;
+
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            errorDiv.textContent = '';
+
+            try {
+                const res = await fetch('/Checkout/CreatePaymentIntent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch (e) { throw new Error("Server returned invalid data."); }
+
+                if (data.error) {
+                    errorDiv.textContent = data.error;
+                    btn.disabled = false;
+                    btn.textContent = original;
+                    return;
+                }
+
+                const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(
+                    data.clientSecret, { payment_method: { card: cardElement } }
+                );
+
+                if (stripeError) {
+                    errorDiv.textContent = stripeError.message;
+                    btn.disabled = false;
+                    btn.textContent = original;
+                } else if (paymentIntent.status === 'succeeded') {
+                    const finalizeRes = await fetch('/Checkout/FinalizeOrder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payment_intent_id: paymentIntent.id })
+                    });
+
+                    const finalizeData = await finalizeRes.json();
+                    if (!finalizeData || !finalizeData.success) {
+                        errorDiv.textContent = finalizeData.message || 'Payment succeeded but failed to save order.';
+                        btn.disabled = false;
+                        btn.textContent = original;
+                        return;
+                    }
+
+                    window.location.href = '/Checkout/Success?payment_id=' + encodeURIComponent(finalizeData.payment_id);
+                }
+            } catch (err) {
+                errorDiv.textContent = err.message;
+                btn.disabled = false;
+                btn.textContent = original;
+            }
+        });
+    </script>
+}

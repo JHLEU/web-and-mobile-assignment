@@ -1,0 +1,77 @@
+﻿@model List<CafeDash.Models.Bill>
+@{
+    Layout = "~/Views/Shared/_CustomerLayout.cshtml";
+}
+<link rel="stylesheet" href="~/css/bills.css">
+
+<div class="main bills-page">
+    <div class="main-navbar">
+        <a href="/Home/Index" class="cart"><ion-icon name="arrow-back-outline"></ion-icon></a>
+    </div>
+
+    <div class="main-menus bills-menus">
+        <div class="main-detail">
+            <h2 class="main-title">Your Bills</h2>
+
+            @if (Model.Count == 0)
+            {
+                <p style="margin-top: 12px;">No transactions yet.</p>
+            }
+            else
+            {
+                foreach (var bill in Model)
+                {
+                    <div style="background:#fff; border-radius:10px; padding:14px; margin-top:14px;">
+                        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                            <strong class="bills-id">Bill #@bill.Payment_ID</strong>
+                            <span>Status: @bill.Payment_status</span>
+                        </div>
+                        <p style="margin-top:6px; color:#555;">Restaurant: @bill.Display_restaurant_name</p>
+                        <p style="color:#555;">Paid at: @bill.Paid_at.ToString("dd MMM yyyy, hh:mm tt")</p>
+
+                        <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+                            <thead>
+                                <tr style="text-align:left; background:#f8f8f8;">
+                                    <th style="padding:8px;">Item</th>
+                                    <th style="padding:8px;">Qty</th>
+                                    <th style="padding:8px;">Unit</th>
+                                    <th style="padding:8px;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in bill.Items)
+                                {
+                                    <tr>
+                                        <td style="padding:8px; border-top:1px solid #eee;">
+                                            @item.Item_name
+                                            @if (!string.IsNullOrEmpty(item.Sugar_level) || !string.IsNullOrEmpty(item.Ice_level) || !string.IsNullOrEmpty(item.Remark))
+                                            {
+                                                <br>
+                                                <small style="color:#777;">
+                                                    @(string.Join(" | ", new[] {
+                                                        !string.IsNullOrEmpty(item.Sugar_level) ? $"Sugar: {item.Sugar_level}" : null,
+                                                        !string.IsNullOrEmpty(item.Ice_level) ? $"Ice: {item.Ice_level}" : null,
+                                                        !string.IsNullOrEmpty(item.Remark) ? $"Remark: {item.Remark}" : null
+                                                    }.Where(s => s != null)))
+                                                </small>
+                                            }
+                                        </td>
+                                        <td style="padding:8px; border-top:1px solid #eee;">@item.Quantity</td>
+                                        <td style="padding:8px; border-top:1px solid #eee;">RM @item.Unit_amount.ToString("0.00")</td>
+                                        <td style="padding:8px; border-top:1px solid #eee;">RM @item.Line_total.ToString("0.00")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+                            <p>Subtotal: RM @bill.Subtotal_amount.ToString("0.00")</p>
+                            <p>SST (6%): RM @bill.SST_amount.ToString("0.00")</p>
+                            <strong class="bills-grand-total">Grand Total: RM @bill.Payment_amount.ToString("0.00")</strong>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
