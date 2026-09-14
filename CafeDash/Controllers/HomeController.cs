@@ -184,7 +184,20 @@ namespace CafeDash.Controllers
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
             if (userId == 0) return RedirectToAction("Login", "Account");
 
-            string? avatarPath = Helpers.AvatarCsvHelper.GetAvatarFromCSV(userId);
+            // Look up the user's unique avatar directly from the folder by their user ID
+            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", "avatars");
+            string? avatarPath = null;
+            if (Directory.Exists(uploadsFolder))
+            {
+                var userFile = Directory.GetFiles(uploadsFolder, $"avatar_{userId}_*")
+                                        .OrderByDescending(f => System.IO.File.GetCreationTime(f))
+                                        .FirstOrDefault();
+                if (userFile != null)
+                {
+                    avatarPath = $"/material/avatars/{Path.GetFileName(userFile)}";
+                }
+            }
+
             ViewBag.ProfileImage = avatarPath ?? "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 150 150%22%3E%3Crect width=%22150%22 height=%22150%22 fill=%22%23D3D3D3%22/%3E%3Ccircle cx=%2275%22 cy=%2250%22 r=%2230%22 fill=%22white%22/%3E%3Cpath d=%22M 30 90 Q 30 80 75 80 Q 120 80 120 90 L 120 150 Q 120 150 75 150 Q 30 150 30 150 Z%22 fill=%22white%22/%3E%3C/svg%3E";
 
             var user = await _context.Users
@@ -217,6 +230,7 @@ namespace CafeDash.Controllers
         }
 
         [HttpPost]
+        [HttpPost]
         public IActionResult UploadAvatar(IFormFile profileImage)
         {
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
@@ -226,6 +240,13 @@ namespace CafeDash.Controllers
             {
                 string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", "avatars");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                // Explicitly use System.IO.File to prevent naming conflicts with the controller method
+                var oldFiles = Directory.GetFiles(uploadsFolder, $"avatar_{userId}_*");
+                foreach (var oldFile in oldFiles)
+                {
+                    try { System.IO.File.Delete(oldFile); } catch { }
+                }
 
                 string ext = Path.GetExtension(profileImage.FileName);
                 string fileName = $"avatar_{userId}_{DateTimeOffset.Now.ToUnixTimeSeconds()}{ext}";
@@ -237,7 +258,6 @@ namespace CafeDash.Controllers
                 }
 
                 string relativePath = $"/material/avatars/{fileName}";
-                Helpers.AvatarCsvHelper.SaveAvatarToCSV(userId, relativePath);
 
                 return Json(new
                 {

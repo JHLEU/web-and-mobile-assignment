@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CafeDash.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260913162931_CafeDashV1")]
+    [Migration("20260914011823_CafeDashV1")]
     partial class CafeDashV1
     {
         /// <inheritdoc />
