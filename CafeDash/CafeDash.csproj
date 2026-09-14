@@ -13,6 +13,12 @@
     <None Remove="wwwroot\material\Femboy cafe\**" />
   </ItemGroup>
 
+  <!-- Seed scripts are read at startup by Data/DatabaseSeeder.cs. -->
+  <ItemGroup>
+    <Content Include="Data\seed_data.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Data\seed_schema.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />

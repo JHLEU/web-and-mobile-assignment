@@ -3,8 +3,7 @@ using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
-string defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=(localdb)\\mssqllocaldb;Database=cafedash_db;Trusted_Connection=True;TrustServerCertificate=True;";
+string defaultConnection = CafeDash.Data.ConnectionStrings.Resolve(builder.Configuration);
 
 if (string.IsNullOrEmpty(builder.Configuration["Smtp:Host"]) ||
     string.IsNullOrEmpty(builder.Configuration["Smtp:Username"]) ||
@@ -43,7 +42,15 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine("Database migration warning: " + ex.Message);
     }
-    //await CafeDash.Data.DatabaseSeeder.SeedRestaurantsAsync(context);
+
+    try
+    {
+        await CafeDash.Data.DatabaseSeeder.SeedAsync(defaultConnection, app.Environment.ContentRootPath);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Database seeding warning: " + ex.Message);
+    }
 }
 
 // Initialize Stripe using your Secret Key from appsettings.json

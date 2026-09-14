@@ -14,7 +14,7 @@ namespace CafeDash.Controllers
         public HomeController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
-            _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+            _connectionString = ConnectionStrings.Resolve(configuration);
         }
 
         // ==========================================
