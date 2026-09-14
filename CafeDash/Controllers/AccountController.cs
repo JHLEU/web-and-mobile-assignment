@@ -14,13 +14,17 @@ namespace CafeDash.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IMemoryCache _cache;
+        private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
         private const int MaxFailedAttempts = 3;
         private const int BlockDurationMinutes = 2;
 
-        public AccountController(ApplicationDbContext context, IMemoryCache cache)
+        public AccountController(ApplicationDbContext context, IMemoryCache cache, IConfiguration config, IWebHostEnvironment env)
         {
             _context = context;
             _cache = cache;
+            _config = config;
+            _env = env;
         }
 
         private (bool isBlocked, int remainingSeconds) CheckLoginBlocked(string key)
@@ -99,8 +103,16 @@ namespace CafeDash.Controllers
 
             if (!isCaptchaValid)
             {
-                ViewBag.Error = "Please complete the CAPTCHA to prove you are human.";
-                return View();
+                if (_env.IsDevelopment())
+                {
+                    Console.WriteLine("[DEV] CAPTCHA check bypassed in development mode (result: " +
+                        (string.IsNullOrEmpty(captchaResponse) ? "not submitted" : "verification failed (likely offline/network)") + ").");
+                }
+                else
+                {
+                    ViewBag.Error = "Please complete the CAPTCHA to prove you are human.";
+                    return View();
+                }
             }
 
             // ==========================================
@@ -206,7 +218,7 @@ namespace CafeDash.Controllers
             return View();
         }
 
-        private async Task SendVerificationEmailAsync(User user)
+        private async Task<(bool emailSent, string verifyLink)> SendVerificationEmailAsync(User user)
         {
             string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLower();
             string tokenHash = HashToken(token);
@@ -227,18 +239,45 @@ namespace CafeDash.Controllers
             await _context.SaveChangesAsync();
 
             string verifyLink = Url.Action("VerifyEmail", "Account", new { token = token }, Request.Scheme)!;
+            Console.WriteLine($"[DEV] Email verification link for {user.Email}: {verifyLink}");
+
+            string? smtpHost = _config["Smtp:Host"];
+            string? smtpPortStr = _config["Smtp:Port"];
+            string? smtpUsername = _config["Smtp:Username"];
+            string? smtpPassword = _config["Smtp:Password"];
+            string? smtpFromEmail = _config["Smtp:FromEmail"];
+            string? smtpFromName = _config["Smtp:FromName"];
+
+            bool hasSmtpConfig = !string.IsNullOrEmpty(smtpHost)
+                                 && int.TryParse(smtpPortStr, out int _)
+                                 && !string.IsNullOrEmpty(smtpUsername)
+                                 && !string.IsNullOrEmpty(smtpPassword)
+                                 && !string.IsNullOrEmpty(smtpFromEmail);
+
+            if (!hasSmtpConfig)
+            {
+                Console.WriteLine("SMTP configuration is missing or incomplete.");
+                if (_env.IsDevelopment())
+                {
+                    user.EmailVerified = true;
+                    user.EmailVerifiedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"[DEV] Auto-verified user {user.User_name} because SMTP is not configured.");
+                }
+                return (false, verifyLink);
+            }
+
+            int smtpPort = int.Parse(smtpPortStr!);
 
             try
             {
-                var _config = HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-
-                using (var smtp = new SmtpClient(_config["Smtp:Host"]!, int.Parse(_config["Smtp:Port"]!)))
+                using (var smtp = new SmtpClient(smtpHost!, smtpPort))
                 {
-                    smtp.Credentials = new System.Net.NetworkCredential(_config["Smtp:Username"], _config["Smtp:Password"]);
+                    smtp.Credentials = new System.Net.NetworkCredential(smtpUsername, smtpPassword);
                     smtp.EnableSsl = true;
                     var mailMessage = new MailMessage
                     {
-                        From = new MailAddress(_config["Smtp:FromEmail"]!, _config["Smtp:FromName"]),
+                        From = new MailAddress(smtpFromEmail!, smtpFromName ?? "CafeDash Support"),
                         Subject = "CafeDash - Verify Your Email Address",
                         Body = $"<h2>Welcome to CafeDash, {user.User_name}!</h2>" +
                                $"<p>Thank you for registering. Please click the link below to verify your email address and activate your account:</p>" +
@@ -252,12 +291,21 @@ namespace CafeDash.Controllers
                     };
                     mailMessage.To.Add(user.Email!);
 
-                    smtp.Send(mailMessage);
+                    await smtp.SendMailAsync(mailMessage);
                 }
+                return (true, verifyLink);
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Verification email failed to send: " + ex.Message);
+                if (_env.IsDevelopment())
+                {
+                    user.EmailVerified = true;
+                    user.EmailVerifiedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"[DEV] Auto-verified user {user.User_name} because SMTP send failed.");
+                }
+                return (false, verifyLink);
             }
         }
 
@@ -312,8 +360,36 @@ namespace CafeDash.Controllers
 
             if (result > 0)
             {
-                await SendVerificationEmailAsync(newUser);
-                ViewBag.Success = "Registration successful! A verification email has been sent to your email address. Please verify your email before logging in.";
+                var (emailSent, verifyLink) = await SendVerificationEmailAsync(newUser);
+                ViewBag.VerifyLink = verifyLink;
+                ViewBag.IsDevelopment = _env.IsDevelopment();
+
+                if (_env.IsDevelopment())
+                {
+                    if (emailSent && newUser.EmailVerified)
+                    {
+                        ViewBag.Success = $"Registration successful! Your account has been auto-verified for development. You can now log in.";
+                    }
+                    else if (emailSent)
+                    {
+                        ViewBag.Success = $"Registration successful! A verification email has been sent to {email}. Dev link: {verifyLink}";
+                    }
+                    else
+                    {
+                        ViewBag.Success = $"Registration successful! Your account has been auto-verified for development (SMTP unavailable). You can now log in directly. Dev link: {verifyLink}";
+                    }
+                }
+                else
+                {
+                    if (emailSent)
+                    {
+                        ViewBag.Success = "Registration successful! A verification email has been sent to your email address. Please verify your email before logging in.";
+                    }
+                    else
+                    {
+                        ViewBag.Success = "Registration successful, but we couldn't send the verification email right now. Please use the resend verification email feature to request a new link.";
+                    }
+                }
                 ViewBag.Email = email;
             }
             else
@@ -405,7 +481,26 @@ namespace CafeDash.Controllers
                     return View();
                 }
 
-                await SendVerificationEmailAsync(user);
+                var (emailSent, verifyLink) = await SendVerificationEmailAsync(user);
+                ViewBag.VerifyLink = verifyLink;
+                ViewBag.IsDevelopment = _env.IsDevelopment();
+
+                if (_env.IsDevelopment())
+                {
+                    if (user.EmailVerified)
+                    {
+                        ViewBag.Success = $"Verification email was not sent but your account has been auto-verified for development. You can now log in directly. Dev link: {verifyLink}";
+                    }
+                    else if (emailSent)
+                    {
+                        ViewBag.Success = $"If the account exists and is not verified, a new verification email has been sent. Dev link: {verifyLink}";
+                    }
+                    else
+                    {
+                        ViewBag.Success = $"If the account exists and is not verified, your account has been auto-verified for development (SMTP unavailable). You can now log in directly. Dev link: {verifyLink}";
+                    }
+                    return View();
+                }
             }
 
             ViewBag.Success = "If the account exists and is not verified, a new verification email has been sent.";
@@ -466,29 +561,50 @@ namespace CafeDash.Controllers
 
                 string resetLink = Url.Action("ResetPassword", "Account", new { token = token }, Request.Scheme)!;
 
-                try
+                Console.WriteLine($"[DEV] Password reset link for {user.Email}: {resetLink}");
+
+                string? smtpHost = _config["Smtp:Host"];
+                string? smtpPortStr = _config["Smtp:Port"];
+                string? smtpUsername = _config["Smtp:Username"];
+                string? smtpPassword = _config["Smtp:Password"];
+                string? smtpFromEmail = _config["Smtp:FromEmail"];
+                string? smtpFromName = _config["Smtp:FromName"];
+
+                int smtpPort = 0;
+                bool hasSmtpConfig = !string.IsNullOrEmpty(smtpHost)
+                                     && int.TryParse(smtpPortStr, out smtpPort)
+                                     && !string.IsNullOrEmpty(smtpUsername)
+                                     && !string.IsNullOrEmpty(smtpPassword)
+                                     && !string.IsNullOrEmpty(smtpFromEmail);
+
+                if (hasSmtpConfig)
                 {
-                    var _config = HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-
-                    using (var smtp = new SmtpClient(_config["Smtp:Host"]!, int.Parse(_config["Smtp:Port"]!)))
+                    try
                     {
-                        smtp.Credentials = new System.Net.NetworkCredential(_config["Smtp:Username"], _config["Smtp:Password"]);
-                        smtp.EnableSsl = true;
-                        var mailMessage = new MailMessage
+                        using (var smtp = new SmtpClient(smtpHost!, smtpPort))
                         {
-                            From = new MailAddress(_config["Smtp:FromEmail"]!, _config["Smtp:FromName"]),
-                            Subject = "CafeDash Password Reset",
-                            Body = $"<p>You requested a password reset. Click the link below to reset your password:</p><p><a href='{resetLink}'>{resetLink}</a></p><p>This link expires in 1 hour.</p>",
-                            IsBodyHtml = true
-                        };
-                        mailMessage.To.Add(user.Email!);
+                            smtp.Credentials = new System.Net.NetworkCredential(smtpUsername, smtpPassword);
+                            smtp.EnableSsl = true;
+                            var mailMessage = new MailMessage
+                            {
+                                From = new MailAddress(smtpFromEmail!, smtpFromName ?? "CafeDash Support"),
+                                Subject = "CafeDash Password Reset",
+                                Body = $"<p>You requested a password reset. Click the link below to reset your password:</p><p><a href='{resetLink}'>{resetLink}</a></p><p>This link expires in 1 hour.</p>",
+                                IsBodyHtml = true
+                            };
+                            mailMessage.To.Add(user.Email!);
 
-                        smtp.Send(mailMessage);
+                            await smtp.SendMailAsync(mailMessage);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Email failed to send: " + ex.Message);
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine("Email failed to send: " + ex.Message);
+                    Console.WriteLine("SMTP configuration is missing or incomplete; password reset email was not sent.");
                 }
             }
 
@@ -581,18 +697,25 @@ namespace CafeDash.Controllers
             string secretKey = "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe";
             string apiUrl = $"https://www.google.com/recaptcha/api/siteverify?secret={secretKey}&response={captchaResponse}";
 
-            using (var client = new HttpClient())
+            try
             {
-                var response = await client.PostAsync(apiUrl, null);
-                if (response.IsSuccessStatusCode)
+                using (var client = new HttpClient())
                 {
-                    var jsonString = await response.Content.ReadAsStringAsync();
-
-                    using (JsonDocument document = JsonDocument.Parse(jsonString))
+                    var response = await client.PostAsync(apiUrl, null);
+                    if (response.IsSuccessStatusCode)
                     {
-                        return document.RootElement.GetProperty("success").GetBoolean();
+                        var jsonString = await response.Content.ReadAsStringAsync();
+
+                        using (JsonDocument document = JsonDocument.Parse(jsonString))
+                        {
+                            return document.RootElement.GetProperty("success").GetBoolean();
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("CAPTCHA verification failed due to network/HTTP error: " + ex.Message);
             }
             return false;
         }

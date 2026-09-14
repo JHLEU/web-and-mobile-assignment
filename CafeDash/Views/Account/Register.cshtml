@@ -1,4 +1,4 @@
-﻿@{
+@{
     Layout = null;
 }
 <!DOCTYPE html>
@@ -60,6 +60,18 @@
                     <div class="success-box">
                         <i class='bx bx-check-circle'></i> @ViewBag.Success
                     </div>
+
+                    if (ViewBag.VerifyLink != null)
+                    {
+                        <div style="margin-bottom:20px; padding:12px; background:rgba(243,156,18,0.15); border:1px solid #f39c12; border-radius:8px; text-align:center;">
+                            <p style="margin:0 0 10px 0; color:#fff; font-size:13px;">
+                                <i class='bx bx-link-external'></i> <strong>Dev testing shortcut:</strong>
+                            </p>
+                            <a href="@ViewBag.VerifyLink" style="background-color:#f39c12; color:white; padding:8px 16px; text-decoration:none; border-radius:4px; display:inline-block; font-size:13px;">
+                                Click here to verify email (dev only)
+                            </a>
+                        </div>
+                    }
                 }
 
                 <div class="textbox">
