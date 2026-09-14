@@ -14,3 +14,13 @@ BEGIN
 END
 GO
 
+
+-- Payment columns used by the Stripe checkout path in CheckoutController but
+-- absent from the EF migration, so the INSERT/SELECT there would fail.
+IF COL_LENGTH('Payment', 'Currency') IS NULL
+    ALTER TABLE Payment ADD Currency nvarchar(10) NULL;
+IF COL_LENGTH('Payment', 'Provider') IS NULL
+    ALTER TABLE Payment ADD Provider nvarchar(20) NULL;
+IF COL_LENGTH('Payment', 'Provider_payment_id') IS NULL
+    ALTER TABLE Payment ADD Provider_payment_id nvarchar(255) NULL;
+GO
