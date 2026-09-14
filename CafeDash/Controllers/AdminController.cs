@@ -115,7 +115,6 @@ public class AdminController : Controller
         using (var conn = new SqlConnection(_connectionString))
         {
             conn.Open();
-            // Changed from [User] to Users
             string query = "SELECT * FROM Users";
             if (!string.IsNullOrEmpty(search))
                 query += " WHERE User_name LIKE @search OR Email LIKE @search";
@@ -184,7 +183,6 @@ public class AdminController : Controller
     {
         ViewBag.Title = "Admin Settings";
 
-        // Grab the logged-in admin's ID from the session
         int? adminId = HttpContext.Session.GetInt32("admin_id");
         if (adminId == null || adminId == 0)
         {
@@ -215,77 +213,175 @@ public class AdminController : Controller
 
         return View(admin);
     }
-    [HttpGet] public IActionResult Login() { return View(); }
+
+    [HttpGet]
+    public IActionResult Login() { return View(); }
+
+    // ==========================================
+    // RESTAURANT & FOOD MANAGEMENT ACTIONS
+    // ==========================================
 
     [HttpGet]
     public IActionResult Restaurants(int? edit_id)
     {
-        ViewBag.Title = "Manage Restaurants - Admin";
-        var viewModel = new RestaurantViewModel();
+        int? adminId = HttpContext.Session.GetInt32("admin_id");
+        if (adminId == null || adminId == 0) return RedirectToAction("Login", "Admin");
 
-        using (var conn = new SqlConnection(_connectionString))
+        if (edit_id.HasValue && edit_id.Value > 0)
         {
-            conn.Open();
-
-            if (edit_id.HasValue && edit_id.Value > 0)
+            using (var conn = new SqlConnection(_connectionString))
             {
-                // Changed Restaurant -> Restaurants
-                var cmdRes = new SqlCommand("SELECT * FROM Restaurants WHERE Restaurant_ID = @id", conn);
-                cmdRes.Parameters.AddWithValue("@id", edit_id.Value);
-                using (var reader = cmdRes.ExecuteReader())
+                conn.Open();
+                var cmd = new SqlCommand("SELECT * FROM Restaurants WHERE Restaurant_ID = @id", conn);
+                cmd.Parameters.AddWithValue("@id", edit_id.Value);
+                using (var reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
-                        viewModel.SelectedRestaurant = new Restaurant
+                        var restaurant = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
                         {
-                            Restaurant_ID = Convert.ToInt32(reader["Restaurant_ID"]),
-                            Name = reader["Name"].ToString()!,
-                            Restaurant_type = reader["Restaurant_type"].ToString()!,
-                            Email = reader["Email"].ToString()!,
-                            Contain_number = reader["Contain_number"].ToString()!,
-                            Address = reader["Address"].ToString()!
-                        };
-                    }
-                }
-
-                // Changed Food -> Foods
-                var cmdFood = new SqlCommand("SELECT * FROM Foods WHERE Restaurant_ID = @id", conn);
-                cmdFood.Parameters.AddWithValue("@id", edit_id.Value);
-                using (var reader = cmdFood.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        viewModel.SelectedRestaurantFoods.Add(new Food
-                        {
-                            Food_ID = Convert.ToInt32(reader["Food_ID"]),
-                            Name = reader["Name"].ToString()!,
-                            Food_type = reader["Food_type"].ToString()!,
-                            Detail = reader["detail"].ToString()!,
-                            Amount = reader["amount"] != DBNull.Value ? Convert.ToDecimal(reader["amount"]) : null
-                        });
-                    }
-                }
-            }
-            else
-            {
-                // Changed Restaurant -> Restaurants
-                var cmdAll = new SqlCommand("SELECT * FROM Restaurants ORDER BY Restaurant_ID DESC", conn);
-                using (var reader = cmdAll.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        viewModel.AllRestaurants.Add(new Restaurant
-                        {
-                            Restaurant_ID = Convert.ToInt32(reader["Restaurant_ID"]),
-                            Name = reader["Name"].ToString()!,
-                            Restaurant_type = reader["Restaurant_type"].ToString()!,
-                            Address = reader["Address"].ToString()!
-                        });
+                            restaurant[reader.GetName(i)] = reader.GetValue(i);
+                        }
+                        ViewBag.SelectedRestaurant = restaurant;
                     }
                 }
             }
         }
-        return View(viewModel);
+        else
+        {
+            var list = new List<Dictionary<string, object>>();
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                var cmd = new SqlCommand("SELECT * FROM Restaurants", conn);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var item = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            item[reader.GetName(i)] = reader.GetValue(i);
+                        }
+                        list.Add(item);
+                    }
+                }
+            }
+            ViewBag.Restaurants = list;
+        }
+
+        return View();
+    }
+
+    [HttpPost]
+    public IActionResult AddRestaurant(string res_name, string res_address, string res_type, string res_email, string res_phone)
+    {
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand("INSERT INTO Restaurants (Name, Address, Restaurant_type, Email, Contain_number, Rating) VALUES (@name, @address, @type, @email, @phone, 0)", conn);
+            cmd.Parameters.AddWithValue("@name", res_name ?? "");
+            cmd.Parameters.AddWithValue("@address", res_address ?? "");
+            cmd.Parameters.AddWithValue("@type", res_type ?? "");
+            cmd.Parameters.AddWithValue("@email", res_email ?? "");
+            cmd.Parameters.AddWithValue("@phone", res_phone ?? "");
+
+            if (cmd.ExecuteNonQuery() > 0) TempData["msg"] = "Restaurant added successfully!";
+        }
+        return RedirectToAction("Restaurants");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> UpdateRestaurant(int restaurant_id, string res_name, string res_type, string res_email, string res_phone, string res_address, IFormFile? res_image)
+    {
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand("UPDATE Restaurants SET Name = @name, Restaurant_type = @type, Email = @email, Contain_number = @phone, Address = @address WHERE Restaurant_ID = @id", conn);
+            cmd.Parameters.AddWithValue("@name", res_name ?? "");
+            cmd.Parameters.AddWithValue("@type", res_type ?? "");
+            cmd.Parameters.AddWithValue("@email", res_email ?? "");
+            cmd.Parameters.AddWithValue("@phone", res_phone ?? "");
+            cmd.Parameters.AddWithValue("@address", res_address ?? "");
+            cmd.Parameters.AddWithValue("@id", restaurant_id);
+            cmd.ExecuteNonQuery();
+        }
+
+        if (res_image != null && res_image.Length > 0)
+        {
+            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", res_name);
+            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+            string filePath = Path.Combine(uploadsFolder, "shop.jpg");
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await res_image.CopyToAsync(stream);
+            }
+        }
+
+        TempData["msg"] = "Restaurant updated successfully!";
+        return RedirectToAction("Restaurants", new { edit_id = restaurant_id });
+    }
+
+    [HttpPost]
+    public IActionResult DeleteRestaurant(int restaurant_id)
+    {
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand("DELETE FROM Restaurants WHERE Restaurant_ID = @id", conn);
+            cmd.Parameters.AddWithValue("@id", restaurant_id);
+            cmd.ExecuteNonQuery();
+            TempData["msg"] = "Restaurant removed successfully.";
+        }
+        return RedirectToAction("Restaurants");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AddFood(int restaurant_id, string food_name, decimal food_amount, string food_desc, string food_type, IFormFile? food_image)
+    {
+        string imageName = "default_food.jpg";
+        if (food_image != null && food_image.Length > 0)
+        {
+            imageName = Guid.NewGuid().ToString() + Path.GetExtension(food_image.FileName);
+            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", "images");
+            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+            string filePath = Path.Combine(uploadsFolder, imageName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await food_image.CopyToAsync(stream);
+            }
+        }
+
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand("INSERT INTO Foods (Restaurant_ID, Name, Food_type, detail, amount) VALUES (@rid, @name, @type, @detail, @amt)", conn);
+            cmd.Parameters.AddWithValue("@rid", restaurant_id);
+            cmd.Parameters.AddWithValue("@name", food_name ?? "");
+            cmd.Parameters.AddWithValue("@type", food_type ?? "");
+            cmd.Parameters.AddWithValue("@detail", food_desc ?? "");
+            cmd.Parameters.AddWithValue("@amt", food_amount);
+            cmd.ExecuteNonQuery();
+        }
+
+        TempData["msg"] = "Food item added successfully!";
+        return RedirectToAction("Restaurants", new { edit_id = restaurant_id });
+    }
+
+    [HttpPost]
+    public IActionResult DeleteFood(int food_id, int restaurant_id)
+    {
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand("DELETE FROM Foods WHERE Food_ID = @id", conn);
+            cmd.Parameters.AddWithValue("@id", food_id);
+            cmd.ExecuteNonQuery();
+        }
+
+        TempData["msg"] = "Food item deleted successfully!";
+        return RedirectToAction("Restaurants", new { edit_id = restaurant_id });
     }
 
     // =========================================================
@@ -308,7 +404,6 @@ public class AdminController : Controller
         using (var conn = new SqlConnection(_connectionString))
         {
             conn.Open();
-            // Fixed table name to Admins (with an 's')
             var cmd = new SqlCommand("SELECT Admin_ID, Name, Password FROM Admins WHERE Name = @name", conn);
             cmd.Parameters.AddWithValue("@name", admin_name);
 
@@ -353,63 +448,10 @@ public class AdminController : Controller
         HttpContext.Session.Clear();
         return RedirectToAction("Login", "Admin");
     }
-    public IActionResult AddRestaurant(string res_name, string res_address, string res_type, string res_email, string res_phone)
-    {
-        using (var conn = new SqlConnection(_connectionString))
-        {
-            conn.Open();
-            // Added Rating and gave it a default value of 0
-            var cmd = new SqlCommand("INSERT INTO Restaurants (Name, Address, Restaurant_type, Email, Contain_number, Rating) VALUES (@name, @address, @type, @email, @phone, 0)", conn);
-            cmd.Parameters.AddWithValue("@name", res_name);
-            cmd.Parameters.AddWithValue("@address", res_address ?? "");
-            cmd.Parameters.AddWithValue("@type", res_type ?? "");
-            cmd.Parameters.AddWithValue("@email", res_email ?? "");
-            cmd.Parameters.AddWithValue("@phone", res_phone ?? "");
-
-            if (cmd.ExecuteNonQuery() > 0) TempData["msg"] = "Restaurant added successfully!";
-        }
-        return RedirectToAction("Restaurants");
-    }
-
-    [HttpPost]
-    public IActionResult UpdateRestaurant(int restaurant_id, string res_name, string res_type, string res_email, string res_phone, string res_address)
-    {
-        using (var conn = new SqlConnection(_connectionString))
-        {
-            conn.Open();
-            // Changed Restaurant -> Restaurants
-            var cmd = new SqlCommand("UPDATE Restaurants SET Name = @name, Restaurant_type = @type, Email = @email, Contain_number = @phone, Address = @address WHERE Restaurant_ID = @id", conn);
-            cmd.Parameters.AddWithValue("@name", res_name);
-            cmd.Parameters.AddWithValue("@type", res_type);
-            cmd.Parameters.AddWithValue("@email", res_email ?? "");
-            cmd.Parameters.AddWithValue("@phone", res_phone ?? "");
-            cmd.Parameters.AddWithValue("@address", res_address ?? "");
-            cmd.Parameters.AddWithValue("@id", restaurant_id);
-
-            if (cmd.ExecuteNonQuery() > 0) TempData["msg"] = "Restaurant updated successfully!";
-        }
-        return RedirectToAction("Restaurants");
-    }
-
-    [HttpPost]
-    public IActionResult DeleteRestaurant(int restaurant_id)
-    {
-        using (var conn = new SqlConnection(_connectionString))
-        {
-            conn.Open();
-            // Changed Restaurant -> Restaurants
-            var cmd = new SqlCommand("DELETE FROM Restaurants WHERE Restaurant_ID = @id", conn);
-            cmd.Parameters.AddWithValue("@id", restaurant_id);
-            cmd.ExecuteNonQuery();
-            TempData["msg"] = "Restaurant removed successfully.";
-        }
-        return RedirectToAction("Restaurants");
-    }
 
     // =========================================================
     // 4. SETTINGS & PASSWORD
     // =========================================================
-    [HttpPost]
     [HttpPost]
     public IActionResult UpdateAdminPassword(string current_password, string new_password, string confirm_password)
     {
@@ -425,14 +467,12 @@ public class AdminController : Controller
         using (var conn = new SqlConnection(_connectionString))
         {
             conn.Open();
-            // Changed Admin -> Admins
             var selectCmd = new SqlCommand("SELECT Password FROM Admins WHERE Admin_ID = @id", conn);
             selectCmd.Parameters.AddWithValue("@id", adminId);
             string currentDbPassword = selectCmd.ExecuteScalar()?.ToString() ?? "";
 
             if (current_password == currentDbPassword)
             {
-                // Changed Admin -> Admins
                 var updateCmd = new SqlCommand("UPDATE Admins SET Password = @newPass WHERE Admin_ID = @id", conn);
                 updateCmd.Parameters.AddWithValue("@newPass", new_password);
                 updateCmd.Parameters.AddWithValue("@id", adminId);
@@ -452,7 +492,6 @@ public class AdminController : Controller
     [HttpGet]
     public IActionResult GetRanking(int limit = 10)
     {
-        // Ensure we check the exact session key set during Admin Login
         int? adminId = HttpContext.Session.GetInt32("admin_id");
         if (adminId == null || adminId == 0)
         {
@@ -507,6 +546,196 @@ public class AdminController : Controller
         });
     }
 
+    // =========================================================
+    // 6. BATCH DATA MANAGEMENT (Insert, Update, Delete)
+    // =========================================================
+    [HttpGet]
+    public IActionResult BatchManager()
+    {
+        int? adminId = HttpContext.Session.GetInt32("admin_id");
+        if (adminId == null || adminId == 0) return RedirectToAction("Login", "Admin");
+
+        ViewBag.Title = "Batch Data Management";
+        return View();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ProcessBatch(IFormFile? batchFile, string batchText, string operationType)
+    {
+        int? adminId = HttpContext.Session.GetInt32("admin_id");
+        if (adminId == null || adminId == 0) return Unauthorized(new { success = false, message = "Unauthorized." });
+
+        var lines = new List<string>();
+
+        if (batchFile != null && batchFile.Length > 0)
+        {
+            using (var reader = new StreamReader(batchFile.OpenReadStream()))
+            {
+                while (!reader.EndOfStream)
+                {
+                    var line = await reader.ReadLineAsync();
+                    if (!string.IsNullOrWhiteSpace(line)) lines.Add(line);
+                }
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(batchText))
+        {
+            using (var reader = new StringReader(batchText))
+            {
+                string? line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(line)) lines.Add(line);
+                }
+            }
+        }
+
+        if (!lines.Any())
+        {
+            TempData["msg"] = "Error: No data provided for batch processing.";
+            return RedirectToAction("BatchManager");
+        }
+
+        int successCount = 0;
+
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            using (var transaction = conn.BeginTransaction())
+            {
+                try
+                {
+                    foreach (var line in lines)
+                    {
+                        var parts = line.Split(',');
+                        if (parts.Length < 5) continue;
+
+                        int restaurantId = int.Parse(parts[0].Trim());
+                        string name = parts[1].Trim();
+                        string type = parts[2].Trim();
+                        string detail = parts[3].Trim();
+                        decimal amount = decimal.Parse(parts[4].Trim());
+
+                        SqlCommand cmd;
+
+                        if (operationType == "insert")
+                        {
+                            cmd = new SqlCommand(@"
+                                INSERT INTO Foods (Restaurant_ID, Name, Food_type, detail, amount) 
+                                VALUES (@rid, @name, @type, @detail, @amt)", conn, transaction);
+                        }
+                        else if (operationType == "update")
+                        {
+                            cmd = new SqlCommand(@"
+                                UPDATE Foods 
+                                SET Food_type = @type, detail = @detail, amount = @amt 
+                                WHERE Restaurant_ID = @rid AND Name = @name", conn, transaction);
+                        }
+                        else // delete
+                        {
+                            cmd = new SqlCommand(@"
+                                DELETE FROM Foods 
+                                WHERE Restaurant_ID = @rid AND Name = @name", conn, transaction);
+                        }
+
+                        cmd.Parameters.AddWithValue("@rid", restaurantId);
+                        cmd.Parameters.AddWithValue("@name", name);
+                        cmd.Parameters.AddWithValue("@type", type);
+                        cmd.Parameters.AddWithValue("@detail", detail);
+                        cmd.Parameters.AddWithValue("@amt", amount);
+
+                        successCount += cmd.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
+                    TempData["msg"] = $"Batch operation '{operationType}' completed successfully. Affected rows: {successCount}";
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    TempData["msg"] = "Batch processing failed: " + ex.Message;
+                }
+            }
+        }
+
+        return RedirectToAction("BatchManager");
+    }
+    [HttpGet]
+    public IActionResult ChatManagement()
+    {
+        int? adminId = HttpContext.Session.GetInt32("admin_id");
+        if (adminId == null || adminId == 0) return RedirectToAction("Login", "Admin");
+
+        // Get list of users who have chat history
+        var users = new List<Dictionary<string, object>>();
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand(@"
+            SELECT DISTINCT u.User_ID, u.User_name, u.Email 
+            FROM Users u 
+            INNER JOIN Chats c ON u.User_ID = c.User_ID 
+            ORDER BY u.User_name", conn);
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var item = new Dictionary<string, object>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        item[reader.GetName(i)] = reader.GetValue(i);
+                    }
+                    users.Add(item);
+                }
+            }
+        }
+        ViewBag.ChatUsers = users;
+        ViewBag.Title = "Live Chat Management";
+        return View();
+    }
+
+    [HttpGet]
+    public IActionResult GetAdminChatMessages(int userId)
+    {
+        var messages = new List<object>();
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand("SELECT Sender_Type, Message_Text, Sent_at FROM Chats WHERE User_ID = @uid ORDER BY Sent_at ASC", conn);
+            cmd.Parameters.AddWithValue("@uid", userId);
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    messages.Add(new
+                    {
+                        sender = reader["Sender_Type"].ToString(),
+                        text = reader["Message_Text"].ToString(),
+                        time = Convert.ToDateTime(reader["Sent_at"]).ToString("hh:mm tt")
+                    });
+                }
+            }
+        }
+        return Json(new { success = true, messages });
+    }
+
+    [HttpPost]
+    public IActionResult SendAdminMessage(int userId, string messageText)
+    {
+        int? adminId = HttpContext.Session.GetInt32("admin_id");
+        if (adminId == null || string.IsNullOrWhiteSpace(messageText)) return Unauthorized(new { success = false });
+
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand("INSERT INTO Chats (User_ID, Sender_Type, Message_Text) VALUES (@uid, 'admin', @text)", conn);
+            cmd.Parameters.AddWithValue("@uid", userId);
+            cmd.Parameters.AddWithValue("@text", messageText.Trim());
+            cmd.ExecuteNonQuery();
+        }
+        return Json(new { success = true });
+    }
+
     [HttpPost]
     public IActionResult DeleteFeedback(int? feedback_id)
     {
@@ -525,5 +754,38 @@ public class AdminController : Controller
 
         TempData["msg"] = "Feedback deleted successfully.";
         return RedirectToAction("Index");
+    }
+
+    [HttpGet]
+    public IActionResult LiveChat()
+    {
+        int? adminId = HttpContext.Session.GetInt32("admin_id");
+        if (adminId == null || adminId == 0) return RedirectToAction("Login", "Admin");
+        var users = new List<Dictionary<string, object>>();
+        using (var conn = new SqlConnection(_connectionString))
+        {
+            conn.Open();
+            var cmd = new SqlCommand(@"
+            SELECT DISTINCT u.User_ID, u.User_name, u.Email 
+            FROM Users u 
+            INNER JOIN Chats c ON u.User_ID = c.User_ID 
+            ORDER BY u.User_name", conn);
+
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var item = new Dictionary<string, object>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        item[reader.GetName(i)] = reader.GetValue(i);
+                    }
+                    users.Add(item);
+                }
+            }
+        }
+        ViewBag.ChatUsers = users;
+        ViewBag.Title = "Live Chat Hub";
+        return View();
     }
 }

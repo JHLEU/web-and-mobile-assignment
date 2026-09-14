@@ -1,6 +1,7 @@
 using CafeDash.Data;
 using CafeDash.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace CafeDash.Controllers
@@ -8,10 +9,12 @@ namespace CafeDash.Controllers
     public class HomeController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly string _connectionString;
 
-        public HomeController(ApplicationDbContext context)
+        public HomeController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _connectionString = configuration.GetConnectionString("DefaultConnection")!;
         }
 
         // ==========================================
@@ -230,7 +233,6 @@ namespace CafeDash.Controllers
         }
 
         [HttpPost]
-        [HttpPost]
         public IActionResult UploadAvatar(IFormFile profileImage)
         {
             int userId = HttpContext.Session.GetInt32("user_id") ?? 0;
@@ -241,7 +243,6 @@ namespace CafeDash.Controllers
                 string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", "avatars");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-                // Explicitly use System.IO.File to prevent naming conflicts with the controller method
                 var oldFiles = Directory.GetFiles(uploadsFolder, $"avatar_{userId}_*");
                 foreach (var oldFile in oldFiles)
                 {
@@ -307,6 +308,51 @@ namespace CafeDash.Controllers
         }
 
         [HttpGet]
+        public IActionResult GetUserChatMessages()
+        {
+            int? userId = HttpContext.Session.GetInt32("user_id");
+            if (userId == null) return Unauthorized(new { success = false });
+
+            var messages = new List<object>();
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                var cmd = new SqlCommand("SELECT Sender_Type, Message_Text, Sent_at FROM Chats WHERE User_ID = @uid ORDER BY Sent_at ASC", conn);
+                cmd.Parameters.AddWithValue("@uid", userId.Value);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        messages.Add(new
+                        {
+                            sender = reader["Sender_Type"].ToString(),
+                            text = reader["Message_Text"].ToString(),
+                            time = Convert.ToDateTime(reader["Sent_at"]).ToString("hh:mm tt")
+                        });
+                    }
+                }
+            }
+            return Json(new { success = true, messages });
+        }
+
+        [HttpPost]
+        public IActionResult SendUserMessage(string messageText)
+        {
+            int? userId = HttpContext.Session.GetInt32("user_id");
+            if (userId == null || string.IsNullOrWhiteSpace(messageText)) return Unauthorized(new { success = false });
+
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                var cmd = new SqlCommand("INSERT INTO Chats (User_ID, Sender_Type, Message_Text) VALUES (@uid, 'user', @text)", conn);
+                cmd.Parameters.AddWithValue("@uid", userId.Value);
+                cmd.Parameters.AddWithValue("@text", messageText.Trim());
+                cmd.ExecuteNonQuery();
+            }
+            return Json(new { success = true });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> SearchCafe(string q)
         {
             if (string.IsNullOrWhiteSpace(q))
@@ -316,7 +362,6 @@ namespace CafeDash.Controllers
 
             string keyword = q.Trim();
 
-            // Try exact match first
             var exactCafe = await _context.Set<Restaurant>()
                 .FirstOrDefaultAsync(r => r.Name!.ToLower() == keyword.ToLower());
 
@@ -331,7 +376,6 @@ namespace CafeDash.Controllers
                 });
             }
 
-            // Fall back to partial match
             var partialCafe = await _context.Set<Restaurant>()
                 .Where(r => r.Name!.Contains(keyword))
                 .OrderBy(r => r.Name)
@@ -352,8 +396,6 @@ namespace CafeDash.Controllers
         }
     }
 
-    // Helper DTO for mapping raw queries safely
-    // Helper DTO for mapping raw queries safely
     public class FoodItemDTO
     {
         public int Food_ID { get; set; }
@@ -363,7 +405,6 @@ namespace CafeDash.Controllers
         public decimal? amount { get; set; }
     }
 
-    // BillDto goes right here!
     public class BillDto
     {
         public int Payment_ID { get; set; }
@@ -375,5 +416,4 @@ namespace CafeDash.Controllers
         public DateTime? Paid_at { get; set; }
         public string? Display_restaurant_name { get; set; }
     }
-
-} // <--- THIS MUST BE THE LAST LINE OF THE FILE (It closes the namespace)
+}

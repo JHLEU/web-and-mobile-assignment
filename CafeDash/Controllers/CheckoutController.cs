@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Stripe;
-using MySqlConnector;
+using Microsoft.Data.SqlClient;
 
 namespace CafeDash.Models
 {
@@ -69,7 +69,6 @@ namespace CafeDash.Controllers
             decimal sst = Math.Round(subtotal * 0.06m, 2);
             decimal grandTotal = Math.Round(subtotal + sst, 2);
 
-            // Returns the exact JSON structure your app.js file expects
             return new
             {
                 success = true,
@@ -94,7 +93,7 @@ namespace CafeDash.Controllers
         }
 
         // ==========================================
-        // 2. CART API (Replaces cart_actions.php)
+        // 2. CART API
         // ==========================================
         [Route("/Cart/Api")]
         public IActionResult CartApi([FromForm] string action, [FromQuery(Name = "action")] string actionGet, [FromForm] string cart_id, [FromForm] int quantity, [FromForm(Name = "food_id")] int food_id, [FromForm(Name = "restaurant_id")] int restaurant_id, [FromForm(Name = "restaurant_name")] string restaurant_name, [FromForm(Name = "item_name")] string item_name, [FromForm(Name = "item_type")] string item_type, [FromForm(Name = "unit_amount")] decimal unit_amount, [FromForm] string sugar, [FromForm] string ice, [FromForm] string remark)
@@ -138,7 +137,7 @@ namespace CafeDash.Controllers
         }
 
         // ==========================================
-        // 3. PAYMENT VIEW (Replaces payment.php)
+        // 3. PAYMENT VIEW
         // ==========================================
         [HttpGet]
         public IActionResult Payment()
@@ -156,14 +155,14 @@ namespace CafeDash.Controllers
                 Subtotal = subtotal,
                 Sst = sst,
                 GrandTotal = subtotal + sst,
-                PublishableKey = _config["Stripe:PublishableKey"]! // Grab Stripe Key securely
+                PublishableKey = _config["Stripe:PublishableKey"]!
             };
 
             return View(vm);
         }
 
         // ==========================================
-        // 4. CREATE INTENT (Replaces create_payment_intent.php)
+        // 4. CREATE INTENT
         // ==========================================
         [HttpPost]
         public IActionResult CreatePaymentIntent()
@@ -192,7 +191,7 @@ namespace CafeDash.Controllers
         }
 
         // ==========================================
-        // 5. FINALIZE ORDER (Replaces finalize_order.php)
+        // 5. FINALIZE ORDER
         // ==========================================
         public class FinalizeReq { public string payment_intent_id { get; set; } = ""; }
 
@@ -216,18 +215,17 @@ namespace CafeDash.Controllers
                 decimal sst = Math.Round(subtotal * 0.06m, 2);
                 decimal grandTotal = subtotal + sst;
 
-                int? restaurantId = null;
-                var uniqueRes = cart.Select(i => i.RestaurantId).Distinct().ToList();
-                if (uniqueRes.Count == 1 && uniqueRes[0] > 0) restaurantId = uniqueRes[0];
+                // Safely grab the first valid Restaurant ID in the cart
+                int? restaurantId = cart.FirstOrDefault(i => i.RestaurantId > 0)?.RestaurantId;
 
                 string paymentType = intent.PaymentMethodTypes?.FirstOrDefault() ?? "card";
 
-                using (var conn = new MySqlConnection(_connectionString))
+                using (var conn = new SqlConnection(_connectionString))
                 {
                     conn.Open();
 
-                    // Idempotency Guard
-                    var checkCmd = new MySqlCommand("SELECT Payment_ID FROM Payment WHERE Provider_payment_id = @pid LIMIT 1", conn);
+                    // Idempotency Guard (SQL Server syntax)
+                    var checkCmd = new SqlCommand("SELECT TOP 1 Payment_ID FROM Payment WHERE Provider_payment_id = @pid", conn);
                     checkCmd.Parameters.AddWithValue("@pid", intent.Id);
                     var existingId = checkCmd.ExecuteScalar();
                     if (existingId != null)
@@ -239,9 +237,13 @@ namespace CafeDash.Controllers
                     // Secure Database Transaction
                     using (var transaction = conn.BeginTransaction())
                     {
-                        var headerCmd = new MySqlCommand("INSERT INTO Payment (User_ID, Restaurant_ID, Payment_type, Payment_amount, Subtotal_amount, SST_amount, Currency, Payment_status, Provider, Provider_payment_id, Paid_at) VALUES (@uid, @rid, @type, @amt, @sub, @sst, @cur, 'SUCCEEDED', 'STRIPE', @pid, @paid)", conn, transaction);
+                        var headerCmd = new SqlCommand(@"
+                            INSERT INTO Payment (User_ID, Restaurant_ID, Payment_type, Payment_amount, Subtotal_amount, SST_amount, Currency, Payment_status, Provider, Provider_payment_id, Paid_at, Created_at) 
+                            VALUES (@uid, @rid, @type, @amt, @sub, @sst, @cur, 'SUCCEEDED', 'STRIPE', @pid, @paid, GETDATE());
+                            SELECT SCOPE_IDENTITY();", conn, transaction);
+
                         headerCmd.Parameters.AddWithValue("@uid", userId);
-                        headerCmd.Parameters.AddWithValue("@rid", restaurantId);
+                        headerCmd.Parameters.AddWithValue("@rid", (object?)restaurantId ?? DBNull.Value);
                         headerCmd.Parameters.AddWithValue("@type", paymentType);
                         headerCmd.Parameters.AddWithValue("@amt", grandTotal);
                         headerCmd.Parameters.AddWithValue("@sub", subtotal);
@@ -249,23 +251,26 @@ namespace CafeDash.Controllers
                         headerCmd.Parameters.AddWithValue("@cur", intent.Currency.ToUpper());
                         headerCmd.Parameters.AddWithValue("@pid", intent.Id);
                         headerCmd.Parameters.AddWithValue("@paid", DateTime.Now);
-                        headerCmd.ExecuteNonQuery();
 
-                        int newPaymentId = (int)headerCmd.LastInsertedId;
+                        int newPaymentId = Convert.ToInt32(headerCmd.ExecuteScalar());
 
                         foreach (var item in cart)
                         {
-                            var itemCmd = new MySqlCommand("INSERT INTO Payment_Item (Payment_ID, Food_ID, Item_name, Item_type, Unit_amount, Quantity, Line_total, Sugar_level, Ice_level, Remark) VALUES (@pid, @fid, @name, @type, @unit, @qty, @total, @sugar, @ice, @remark)", conn, transaction);
+                            var itemCmd = new SqlCommand(@"
+        INSERT INTO Payment_Items (Payment_ID, Food_ID, Item_name, Item_type, Unit_amount, Quantity, Line_total, Sugar_level, Ice_level, Remark, Created_at) 
+        VALUES (@pid, @fid, @name, @type, @unit, @qty, @total, @sugar, @ice, @remark, GETDATE())", conn, transaction);
+
                             itemCmd.Parameters.AddWithValue("@pid", newPaymentId);
-                            itemCmd.Parameters.AddWithValue("@fid", item.FoodId > 0 ? item.FoodId : null);
+                            itemCmd.Parameters.AddWithValue("@fid", item.FoodId > 0 ? item.FoodId : (object)DBNull.Value);
                             itemCmd.Parameters.AddWithValue("@name", item.ItemName);
                             itemCmd.Parameters.AddWithValue("@type", item.ItemType);
                             itemCmd.Parameters.AddWithValue("@unit", item.UnitAmount);
                             itemCmd.Parameters.AddWithValue("@qty", item.Quantity);
                             itemCmd.Parameters.AddWithValue("@total", item.LineTotal);
-                            itemCmd.Parameters.AddWithValue("@sugar", item.Sugar);
-                            itemCmd.Parameters.AddWithValue("@ice", item.Ice);
-                            itemCmd.Parameters.AddWithValue("@remark", item.Remark);
+                            itemCmd.Parameters.AddWithValue("@sugar", item.Sugar ?? "");
+                            itemCmd.Parameters.AddWithValue("@ice", item.Ice ?? "");
+                            itemCmd.Parameters.AddWithValue("@remark", item.Remark ?? "");
+
                             itemCmd.ExecuteNonQuery();
                         }
 
@@ -282,7 +287,7 @@ namespace CafeDash.Controllers
         }
 
         // ==========================================
-        // 6. SUCCESS VIEW (Replaces Payment_success.php)
+        // 6. SUCCESS VIEW
         // ==========================================
         [HttpGet]
         public IActionResult Success(int payment_id)

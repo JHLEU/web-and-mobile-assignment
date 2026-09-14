@@ -4,6 +4,8 @@
     ViewBag.HideFooter = true;
 }
 <link rel="stylesheet" href="~/css/setting style.css">
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
 
 <div class="settingsidebar">
     <h2><ion-icon name="settings-outline"></ion-icon> Setting</h2>
@@ -111,6 +113,29 @@
     </div>
 </div>
 
+<!-- IMAGE CROPPER MODAL -->
+<div id="cropModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; padding:20px; border-radius:8px; max-width:500px; width:90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <h3 style="margin-top:0; margin-bottom:15px; color:#333;">Edit Profile Picture</h3>
+        <div style="max-height: 350px; overflow: hidden; background:#f0f0f0; display:flex; justify-content:center; align-items:center;">
+            <img id="imageToCrop" style="max-width: 100%; display:block;" />
+        </div>
+        <div style="margin-top: 15px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+            <button type="button" id="rotateLeft" class="upload-btn" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Rotate ↺</button>
+            <button type="button" id="rotateRight" class="upload-btn" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Rotate ↻</button>
+            <button type="button" id="flipH" class="upload-btn" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Flip H</button>
+            <button type="button" id="flipV" class="upload-btn" style="background:#6c757d; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Flip V</button>
+        </div>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" id="cancelCrop" style="background:#e0e0e0; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:500;">Cancel</button>
+            <button type="button" id="confirmCrop" class="save-btn" style="width:auto; padding:8px 16px; cursor:pointer;">Crop & Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cropper.js Script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         function showNotification(message, type = 'info') {
@@ -149,7 +174,6 @@
                 const tabName = this.getAttribute('data-tab');
                 document.querySelectorAll('.setting-content').forEach(content => content.classList.remove('active'));
 
-                // Also manage active state for sidebar links
                 document.querySelectorAll('.setting-tab-link').forEach(l => l.classList.remove('active'));
                 this.classList.add('active');
 
@@ -157,17 +181,121 @@
             });
         });
 
-        // --- FILE UPLOAD VIA C# ---
+        // --- ADVANCED IMAGE PROCESSING & UPLOAD WORKFLOW ---
+        let cropper = null;
         const profileImageInput = document.getElementById('profileImageInput');
         const profilePic = document.getElementById('profilePic');
+        const cropModal = document.getElementById('cropModal');
+        const imageToCrop = document.getElementById('imageToCrop');
+
+        function initCropperWithImage(src) {
+            imageToCrop.src = src;
+            cropModal.style.display = 'flex';
+
+            if (cropper) {
+                cropper.destroy();
+            }
+
+            cropper = new Cropper(imageToCrop, {
+                aspectRatio: 1,
+                viewMode: 1,
+                autoCropArea: 0.9,
+                responsive: true
+            });
+        }
 
         if (profileImageInput) {
             profileImageInput.addEventListener('change', function() {
                 const file = this.files[0];
                 if (!file) return;
 
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    initCropperWithImage(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- WEBCAM INTEGRATION ---
+        const openCameraBtn = document.getElementById('openCameraBtn');
+        const closeCameraBtn = document.getElementById('closeCameraBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const webcamVideo = document.getElementById('webcamVideo');
+        const cameraCanvas = document.getElementById('cameraCanvas');
+        let videoStream = null;
+
+        if (openCameraBtn) {
+            openCameraBtn.addEventListener('click', async function() {
+                try {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    webcamVideo.srcObject = videoStream;
+                    cameraContainer.style.display = 'block';
+                } catch (err) {
+                    showNotification('Camera access denied or unavailable.', 'error');
+                }
+            });
+
+            closeCameraBtn.addEventListener('click', function() {
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                }
+                cameraContainer.style.display = 'none';
+            });
+
+            captureBtn.addEventListener('click', function() {
+                cameraCanvas.width = webcamVideo.videoWidth;
+                cameraCanvas.height = webcamVideo.videoHeight;
+                const ctx = cameraCanvas.getContext('2d');
+                ctx.drawImage(webcamVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+
+                const dataUrl = cameraCanvas.toDataURL('image/jpeg');
+
+                // Stop the webcam stream
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                }
+                cameraContainer.style.display = 'none';
+
+                // Open Cropper with snapshot
+                initCropperWithImage(dataUrl);
+            });
+        }
+
+        // Cropper Toolbar Actions
+        document.getElementById('rotateLeft').addEventListener('click', () => { if (cropper) cropper.rotate(-90); });
+        document.getElementById('rotateRight').addEventListener('click', () => { if (cropper) cropper.rotate(90); });
+
+        let scaleX = 1, scaleY = 1;
+        document.getElementById('flipH').addEventListener('click', () => {
+            if (!cropper) return;
+            scaleX = -scaleX;
+            cropper.scaleX(scaleX);
+        });
+        document.getElementById('flipV').addEventListener('click', () => {
+            if (!cropper) return;
+            scaleY = -scaleY;
+            cropper.scaleY(scaleY);
+        });
+
+        // Cancel Cropping
+        document.getElementById('cancelCrop').addEventListener('click', () => {
+            cropModal.style.display = 'none';
+            if (profileImageInput) profileImageInput.value = '';
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+
+        // Confirm Cropping & Upload
+        document.getElementById('confirmCrop').addEventListener('click', () => {
+            if (!cropper) return;
+
+            cropper.getCroppedCanvas({ width: 300, height: 300 }).toBlob((blob) => {
                 const formData = new FormData();
-                formData.append('profileImage', file);
+                formData.append('profileImage', blob, 'avatar.jpg');
 
                 fetch('/Home/UploadAvatar', {
                     method: 'POST',
@@ -185,68 +313,13 @@
                     .catch(error => {
                         showNotification('Error connecting to server.', 'error');
                     });
-            });
-        }
 
-        // --- NEW: WEBCAM INTEGRATION ---
-        const openCameraBtn = document.getElementById('openCameraBtn');
-        const closeCameraBtn = document.getElementById('closeCameraBtn');
-        const captureBtn = document.getElementById('captureBtn');
-        const cameraContainer = document.getElementById('cameraContainer');
-        const webcamVideo = document.getElementById('webcamVideo');
-        const cameraCanvas = document.getElementById('cameraCanvas');
-        let videoStream = null;
-
-        if (openCameraBtn) {
-            // 1. Turn on the camera
-            openCameraBtn.addEventListener('click', async function() {
-                try {
-                    videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    webcamVideo.srcObject = videoStream;
-                    cameraContainer.style.display = 'block';
-                } catch (err) {
-                    showNotification('Camera access denied or unavailable.', 'error');
-                }
-            });
-
-            // 2. Turn off the camera
-            closeCameraBtn.addEventListener('click', function() {
-                if (videoStream) {
-                    videoStream.getTracks().forEach(track => track.stop());
-                }
-                cameraContainer.style.display = 'none';
-            });
-
-            // 3. Snap the photo and upload it
-            captureBtn.addEventListener('click', function() {
-                cameraCanvas.width = webcamVideo.videoWidth;
-                cameraCanvas.height = webcamVideo.videoHeight;
-                const ctx = cameraCanvas.getContext('2d');
-                ctx.drawImage(webcamVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
-
-                cameraCanvas.toBlob((blob) => {
-                    const file = new File([blob], "webcam-snapshot.jpg", { type: "image/jpeg" });
-                    const formData = new FormData();
-                    formData.append('profileImage', file);
-
-                    fetch('/Home/UploadAvatar', {
-                        method: 'POST',
-                        body: formData
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                profilePic.src = data.filepath + "?t=" + new Date().getTime();
-                                showNotification('Webcam photo saved successfully!', 'success');
-                                closeCameraBtn.click(); // Auto-close camera
-                            } else {
-                                showNotification('Upload failed: ' + data.message, 'error');
-                            }
-                        })
-                        .catch(error => showNotification('Error connecting to server.', 'error'));
-                }, 'image/jpeg');
-            });
-        }
+                cropModal.style.display = 'none';
+                if (profileImageInput) profileImageInput.value = '';
+                cropper.destroy();
+                cropper = null;
+            }, 'image/jpeg');
+        });
 
         // Save Profile via C# JSON API
         document.getElementById('saveProfileBtn').addEventListener('click', function() {
