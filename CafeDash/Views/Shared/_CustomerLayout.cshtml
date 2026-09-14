@@ -8,11 +8,10 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
 </head>
 
-<!-- This uses a safe fallback so the HTML never breaks if the class is empty -->
 <body class="@(ViewBag.BodyClass ?? "")">
 
     <!-- SIDEBAR -->
@@ -25,7 +24,6 @@
             <a href="/Home/Settings"><ion-icon name="settings-outline"></ion-icon>Setting</a>
         </div>
         <div class="sidebar-logout">
-            <!-- Updated to point to the correct Account Controller! -->
             <form action="/Account/Logout" method="POST" style="display: inline;">
                 <button type="submit" style="background: none; border: none; color: inherit; font: inherit; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px;">
                     <ion-icon name="log-out-outline"></ion-icon>Logout
@@ -40,7 +38,25 @@
     <!-- INJECT THE CART MODAL GLOBALLY -->
     <partial name="_CartModal" />
 
-    <!-- Only draw the footer if the page hasn't hidden it -->
+    <!-- FLOATING CHAT BOX WIDGET (Hidden by default) -->
+    <div id="chat-box-container" style="display: none; position: fixed; top: 80px; right: 30px; width: 340px; height: 450px; background: white; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); z-index: 9999; flex-direction: column; overflow: hidden; border: 1px solid #eee;">
+        <div style="background: #e6953b; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; font-weight: 600;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <ion-icon name="headset-outline" style="font-size: 20px;"></ion-icon> Support Chat
+            </div>
+            <button id="chat-close-btn" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">✕</button>
+        </div>
+        <div id="chat-messages-area" style="flex: 1; padding: 15px; overflow-y: auto; background: #fdfdfd; display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+            <!-- Messages will load here -->
+        </div>
+        <div style="padding: 12px; background: white; border-top: 1px solid #eee; display: flex; gap: 8px;">
+            <input type="text" id="chat-input-text" placeholder="Type your message..." style="flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px;" />
+            <button id="chat-send-btn" style="background: #e6953b; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                <ion-icon name="send"></ion-icon>
+            </button>
+        </div>
+    </div>
+
     @if (ViewBag.HideFooter != true)
     {
         <!-- FOOTER -->
@@ -70,5 +86,68 @@
     <!-- SCRIPTS -->
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="~/js/app.js"></script>
+
+    <!-- LIVE CHAT SCRIPT -->
+    <script>
+            $(document).ready(function() {
+                let chatInterval;
+
+                // Bind click to the toggle icon you will place in your top bar
+                $(document).on('click', '#chat-toggle-btn', function() {
+                    $('#chat-box-container').fadeToggle(200);
+                    loadUserMessages();
+                    clearInterval(chatInterval);
+                    if ($('#chat-box-container').is(':visible')) {
+                        chatInterval = setInterval(loadUserMessages, 3000); // Auto-refresh every 3s
+                    }
+                });
+
+                $('#chat-close-btn').click(function() {
+                    $('#chat-box-container').fadeOut(200);
+                    clearInterval(chatInterval);
+                });
+
+                function loadUserMessages() {
+                    $.get('/Home/GetUserChatMessages', function(res) {
+                        if (res.success) {
+                            let area = $('#chat-messages-area');
+                            area.empty();
+                            if (res.messages.length === 0) {
+                                area.append('<div style="text-align: center; color: #aaa; margin-top: 30px;">Say hi! Admin will reply shortly.</div>');
+                            }
+                            res.messages.forEach(function(m) {
+                                let isUser = m.sender === 'user';
+                                let align = isUser ? 'flex-end' : 'flex-start';
+                                let bg = isUser ? '#e6953b' : '#f1f1f1';
+                                let color = isUser ? 'white' : '#333';
+                                let borderRad = isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px';
+
+                                let bubble = `<div style="max-width: 80%; align-self: ${align}; background: ${bg}; color: ${color}; padding: 10px 14px; border-radius: ${borderRad}; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                    ${m.text}
+                                    <div style="font-size: 10px; opacity: 0.7; text-align: ${isUser ? 'right' : 'left'}; margin-top: 4px;">${m.time}</div>
+                                </div>`;
+                                area.append(bubble);
+                            });
+                            area.scrollTop(area[0].scrollHeight);
+                        }
+                    });
+                }
+
+                $('#chat-send-btn').click(function() { sendMsg(); });
+                $('#chat-input-text').keypress(function(e) { if (e.which === 13) sendMsg(); });
+
+                function sendMsg() {
+                    let text = $('#chat-input-text').val().trim();
+                    if (!text) return;
+
+                    $.post('/Home/SendUserMessage', { messageText: text }, function(res) {
+                        if (res.success) {
+                            $('#chat-input-text').val('');
+                            loadUserMessages();
+                        }
+                    });
+                }
+            });
+    </script>
 </body>
 </html>

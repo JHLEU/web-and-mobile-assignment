@@ -1,87 +1,199 @@
-﻿@model CafeDash.Models.RestaurantViewModel
-@{
+﻿@{
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.Title = "Restaurant Management - Admin";
+    var res = ViewBag.SelectedRestaurant as Dictionary<string, object>;
+    var restaurantsList = ViewBag.Restaurants as List<Dictionary<string, object>>;
 }
-<div class="main">
-    <div class="main-navbar">
-        <h1>Restaurant Management</h1>
-        <div class="profile">
-            <span class="user"><ion-icon name="people-circle-outline"></ion-icon></span>
-            <strong>Admin</strong>
-        </div>
-    </div>
 
-    <!-- ADD RESTAURANT -->
-    <div class="main-highlight">
-        <h3>Add New Restaurant</h3>
-        <form action="/Admin/AddRestaurant" method="POST" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-            <input type="text" name="res_name" placeholder="Restaurant Name" required style="padding: 8px; border-radius: 5px; border: none;">
-            <input type="text" name="res_type" placeholder="Cuisine Type (e.g., Italian)" required style="padding: 8px; border-radius: 5px; border: none;">
-            <input type="email" name="res_email" placeholder="Email" style="padding: 8px; border-radius: 5px; border: none;">
-            <input type="text" name="res_phone" placeholder="Phone Number" style="padding: 8px; border-radius: 5px; border: none;">
-            <textarea name="res_address" placeholder="Full Address" style="grid-column: span 2; padding: 8px; border-radius: 5px; border: none;"></textarea>
-            <button type="submit" style="background: var(--darkBrown); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; grid-column: span 2;">
-                Add Restaurant
-            </button>
-        </form>
-    </div>
+<div class="main" style="padding: 30px; box-sizing: border-box;">
+    <h2 style="margin-bottom: 25px; color: #fff; font-weight: 600; font-size: 28px;">Restaurant Management</h2>
 
     @if (TempData["msg"] != null)
     {
-        <p style="color: var(--whiteColor); margin: 10px 0; background: var(--primaryColor); padding: 10px; border-radius: 5px;">@TempData["msg"]</p>
+        <div style="padding: 15px; margin-bottom: 20px; border-radius: 8px; background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; font-weight: 500;">
+            @TempData["msg"]
+        </div>
     }
 
-    <!-- EDIT MODE -->
-    @if (Model.SelectedRestaurant != null)
+    @if (res == null)
     {
-        <div class="main-menus">
-            <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                <form action="/Admin/UpdateRestaurant" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="restaurant_id" value="@Model.SelectedRestaurant.Restaurant_ID">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        @{
-                            string shopImage = $"/material/{Model.SelectedRestaurant.Name}/shop.jpg";
-                            string physicalPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "material", Model.SelectedRestaurant.Name, "shop.jpg");
-                            if (!System.IO.File.Exists(physicalPath)) shopImage = "/material/images/default_res.jpg";
-                        }
-                        <img src="@shopImage" style="width: 200px; height: 150px; object-fit: cover; border-radius: 10px; border: 2px solid #ddd;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 15px;">
-                        <input type="text" name="res_name" value="@Model.SelectedRestaurant.Name" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                        <input type="text" name="res_type" value="@Model.SelectedRestaurant.Restaurant_type" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                        <input type="email" name="res_email" value="@Model.SelectedRestaurant.Email" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                        <input type="text" name="res_phone" value="@Model.SelectedRestaurant.Contain_number" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                        <textarea name="res_address" style="padding: 12px; border: 1px solid #ddd; border-radius: 8px;">@Model.SelectedRestaurant.Address</textarea>
-                        <button type="submit" style="background: var(--primaryColor); color: white; padding: 15px; border: none; border-radius: 8px;">Update Info</button>
-                    </div>
-                </form>
+        <!-- ADD NEW RESTAURANT FORM -->
+        <div style="background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 30px;">
+            <h3 style="margin-top: 0; color: #333; margin-bottom: 20px;">Add New Restaurant</h3>
+            <form asp-action="AddRestaurant" method="POST" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <input type="text" name="res_name" placeholder="Restaurant Name" required style="padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                <select name="res_type" required style="padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px; background: #fff;">
+                    <option value="">Select Cuisine Type</option>
+                    <option value="Food">Food</option>
+                    <option value="Dessert">Dessert</option>
+                    <option value="Cafe">Cafe</option>
+                </select>
+                <input type="email" name="res_email" placeholder="Email" required style="padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                <input type="text" name="res_phone" placeholder="Phone Number" required style="padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                <textarea name="res_address" placeholder="Full Address" required style="grid-column: span 2; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px; min-height: 80px;"></textarea>
+                <button type="submit" style="background: #b5651d; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; grid-column: span 2; font-weight: 600; font-size: 15px;">
+                    Add Restaurant
+                </button>
+            </form>
+        </div>
 
-                <form method="POST" action="/Admin/DeleteRestaurant" onsubmit="return confirm('Permanently delete?');" style="margin-top:20px;">
-                    <input type="hidden" name="restaurant_id" value="@Model.SelectedRestaurant.Restaurant_ID">
-                    <button type="submit" style="background: #c0392b; color: white; padding: 12px; border-radius: 8px; width: 100%;">Remove Restaurant</button>
-                </form>
-            </div>
+        <!-- RESTAURANT CARDS GRID -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px;">
+            @if (restaurantsList != null)
+            {
+                foreach (var row in restaurantsList)
+                {
+                    string shopImage = $"/material/{row["Name"]}/shop.jpg";
+                    string physicalPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", row["Name"].ToString()!, "shop.jpg");
+                    if (!File.Exists(physicalPath))
+                    {
+                        shopImage = "/material/images/default_res.jpg";
+                    }
+
+                    <div onclick="window.location.href='/Admin/Restaurants?edit_id=@row["Restaurant_ID"]'" style="background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.2s;">
+                        <img src="@shopImage" style="width: 100%; height: 140px; object-fit: cover;" />
+                        <div style="padding: 15px;">
+                            <h4 style="margin: 0 0 5px 0; color: #333; font-size: 16px;">@row["Name"]</h4>
+                            <p style="margin: 0; color: #777; font-size: 13px;">@row["Restaurant_type"]</p>
+                        </div>
+                    </div>
+                }
+            }
         </div>
     }
     else
     {
-        <!-- LIST MODE -->
-        <div class="main-menus">
-            <div class="detail-wrapper" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
-                @foreach (var row in Model.AllRestaurants)
-                {
-                    <div class="detail-card" style="background:white; cursor: pointer; padding: 15px; border-radius:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="window.location.href='/Admin/Restaurants?edit_id=@row.Restaurant_ID'">
-                        @{
-                            string listShopImage = $"/material/{row.Name}/shop.jpg";
-                            string listPhysicalPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "material", row.Name, "shop.jpg");
-                            if (!System.IO.File.Exists(listPhysicalPath)) listShopImage = "/material/images/default_res.jpg";
+        <!-- EDIT RESTAURANT & FOOD MANAGEMENT -->
+        <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 30px;">
+            <a href="/Admin/Restaurants" style="display: inline-block; margin-bottom: 20px; color: #b5651d; text-decoration: none; font-weight: 600;">← Back to Restaurants</a>
+
+            <form asp-action="UpdateRestaurant" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="restaurant_id" value="@res["Restaurant_ID"]" />
+                <div style="text-align: center; margin-bottom: 20px;">
+                    @{
+                        string editShopImage = $"/material/{res["Name"]}/shop.jpg";
+                        string editPhysicalPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "material", res["Name"].ToString()!, "shop.jpg");
+                        if (!System.IO.File.Exists(editPhysicalPath))
+                        {
+                            editShopImage = "/material/images/default_res.jpg";
                         }
-                        <img src="@listShopImage" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;">
-                        <h4 style="margin: 10px 0 5px 0;">@row.Name</h4>
-                        <p style="color: #666; font-size: 14px;">@row.Restaurant_type</p>
+                    }
+                    <img src="@editShopImage" style="width: 200px; height: 150px; object-fit: cover; border-radius: 10px; border: 2px solid #ddd;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:5px;">Restaurant Name</label>
+                        <input type="text" name="res_name" value="@res["Name"]" style="width:100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;" />
                     </div>
-                }
-            </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:5px;">Cuisine Type</label>
+                        <select name="res_type" style="width:100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background:#fff;">
+                            <option value="Food" selected="@(res["Restaurant_type"].ToString() == "Food")">Food</option>
+                            <option value="Dessert" selected="@(res["Restaurant_type"].ToString() == "Dessert")">Dessert</option>
+                            <option value="Cafe" selected="@(res["Restaurant_type"].ToString() == "Cafe")">Cafe</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:5px;">Email</label>
+                        <input type="email" name="res_email" value="@res["Email"]" style="width:100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;" />
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:5px;">Phone Number</label>
+                        <input type="text" name="res_phone" value="@res["Contain_number"]" style="width:100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;" />
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:5px;">Address</label>
+                        <textarea name="res_address" style="width:100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; min-height: 80px;">@res["Address"]</textarea>
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:5px;">Shop Image</label>
+                        <input type="file" name="res_image" accept="image/*" style="padding: 5px;" />
+                    </div>
+                    <button type="submit" style="background: #b5651d; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Update Restaurant Info</button>
+                </div>
+            </form>
+
+            <form asp-action="DeleteRestaurant" method="POST" style="margin-top: 15px;">
+                <input type="hidden" name="restaurant_id" value="@res["Restaurant_ID"]" />
+                <button type="submit" onclick="return confirm('Are you sure you want to delete this restaurant?');" style="background: #c0392b; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; cursor: pointer; font-weight: 600;">
+                    Remove Restaurant
+                </button>
+            </form>
+        </div>
+
+        <!-- FOOD MANAGEMENT SECTION -->
+        <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+            <h3 style="margin-top:0; margin-bottom: 20px;">Manage Foods for @res["Name"]</h3>
+
+            <form asp-action="AddFood" method="POST" enctype="multipart/form-data" style="margin-bottom: 30px; display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <input type="hidden" name="restaurant_id" value="@res["Restaurant_ID"]" />
+
+                <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 12px;">
+                    <input type="text" name="food_name" placeholder="Food Name" required style="padding: 12px; border-radius: 8px; border: 1px solid #ddd;" />
+                    <input type="number" name="food_amount" placeholder="Price (RM)" step="0.01" required style="padding: 12px; border-radius: 8px; border: 1px solid #ddd;" />
+                    <textarea name="food_desc" placeholder="Food Description" style="padding: 12px; border-radius: 8px; border: 1px solid #ddd; min-height: 60px;"></textarea>
+                    <select name="food_type" required style="padding: 12px; border-radius: 8px; border: 1px solid #ddd; background: #fff;">
+                        <option value="">Select Food Type</option>
+                        <option value="Rice">Rice</option>
+                        <option value="Noodles">Noodles</option>
+                        <option value="Pasta">Pasta</option>
+                        <option value="Pizza">Pizza</option>
+                        <option value="Salad">Salad</option>
+                        <option value="Beverage">Beverage</option>
+                        <option value="Dessert">Dessert</option>
+                        <option value="Snack">Snack</option>
+                        <option value="Others">Others</option>
+                    </select>
+                    <div>
+                        <label style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">Food Image</label>
+                        <input type="file" name="food_image" accept="image/*" />
+                    </div>
+                    <button type="submit" style="background: #27ae60; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer;">✚ Add Food Item</button>
+                </div>
+            </form>
+
+            <!-- FOOD LIST TABLE -->
+            <table style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
+                        <th style="padding: 14px; text-align: left;">Name</th>
+                        <th style="padding: 14px; text-align: left;">Type</th>
+                        <th style="padding: 14px; text-align: left;">Detail</th>
+                        <th style="padding: 14px; text-align: center;">Price</th>
+                        <th style="padding: 14px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var connectionString = Context.RequestServices.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
+                        using (var conn = new Microsoft.Data.SqlClient.SqlConnection(connectionString))
+                        {
+                            conn.Open();
+                            var cmd = new Microsoft.Data.SqlClient.SqlCommand("SELECT * FROM Foods WHERE Restaurant_ID = @rid", conn);
+                            cmd.Parameters.AddWithValue("@rid", res["Restaurant_ID"]);
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    <tr>
+                                        <td style="padding: 14px; border-bottom: 1px solid #eee;">@reader["Name"]</td>
+                                        <td style="padding: 14px; border-bottom: 1px solid #eee;">@reader["Food_type"]</td>
+                                        <td style="padding: 14px; border-bottom: 1px solid #eee;">@reader["detail"]</td>
+                                        <td style="padding: 14px; border-bottom: 1px solid #eee; text-align: center;">RM @Convert.ToDecimal(reader["amount"]).ToString("0.00")</td>
+                                        <td style="padding: 14px; border-bottom: 1px solid #eee; text-align: center;">
+                                            <form asp-action="DeleteFood" method="POST" style="display:inline;">
+                                                <input type="hidden" name="food_id" value="@reader["Food_ID"]" />
+                                                <input type="hidden" name="restaurant_id" value="@res["Restaurant_ID"]" />
+                                                <button type="submit" onclick="return confirm('Delete this food item?');" style="background: #c0392b; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        }
+                    }
+                </tbody>
+            </table>
         </div>
     }
 </div>

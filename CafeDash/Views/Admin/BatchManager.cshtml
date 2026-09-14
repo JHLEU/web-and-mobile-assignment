@@ -1,0 +1,44 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.Title = "Batch Data Management";
+}
+
+<div class="main" style="padding: 30px; box-sizing: border-box;">
+    <h2 style="margin-bottom: 25px; color: #fff; font-weight: 600; font-size: 28px;">Batch Data Management</h2>
+
+    @if (TempData["msg"] != null)
+    {
+        <div style="padding: 15px; margin-bottom: 20px; border-radius: 8px; background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; font-weight: 500;">
+            @TempData["msg"]
+        </div>
+    }
+
+    <div style="background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 900px;">
+        <form asp-action="ProcessBatch" method="post" enctype="multipart/form-data">
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">Select Operation Type</label>
+                <select name="operationType" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; outline: none; color: #333;">
+                    <option value="insert">Batch Insert</option>
+                    <option value="update">Batch Update</option>
+                    <option value="delete">Batch Delete</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">Option A: Upload Text / CSV File</label>
+                <input type="file" name="batchFile" accept=".txt,.csv" style="display: block; width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff;" />
+                <small style="display: block; margin-top: 5px; color: #666; font-size: 12px;">Format per line: Restaurant_ID, Name, Food_type, Detail, Amount</small>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">Option B: Enter Data Manually (Paste lines below)</label>
+                <textarea name="batchText" rows="6" placeholder="1, Espresso, Coffee, Strong black coffee, 6.50&#10;2, Croissant, Bakery, Fresh butter pastry, 5.00" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 14px; box-sizing: border-box; resize: vertical; outline: none; background: #fff; color: #333;"></textarea>
+            </div>
+
+            <button type="submit" style="background: #e6953b; color: white; border: none; padding: 12px 25px; font-size: 15px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: opacity 0.2s;">
+                Execute Batch Operation
+            </button>
+        </form>
+    </div>
+</div>
