@@ -25,6 +25,17 @@
                 text-align: center;
                 font-size: 14px;
             }
+
+            .success-box {
+                background: rgba(39, 174, 96, 0.2);
+                border: 1px solid #27ae60;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 14px;
+            }
     </style>
 </head>
 <body>
@@ -45,10 +56,10 @@
                 {
                     <div class="error-box"><i class='bx bx-error-circle'></i> @ViewBag.Error</div>
                 }
-                <!-- Also check TempData for CAPTCHA errors -->
+                <!-- Also check TempData for CAPTCHA errors / registration success -->
                 @if (TempData["msg"] != null)
                 {
-                    <div class="error-box"><i class='bx bx-error-circle'></i> @TempData["msg"]</div>
+                    <div class="success-box"><i class='bx bx-check-circle'></i> @TempData["msg"]</div>
                 }
 
                 <div class="textbox">

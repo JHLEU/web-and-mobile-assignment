@@ -149,25 +149,6 @@ namespace CafeDash.Controllers
 
                 if (isValidPassword)
                 {
-                    if (!user.EmailVerified)
-                    {
-                        bool hasVerificationRecord = await _context.EmailVerifications
-                            .AnyAsync(v => v.user_id == user.User_ID);
-
-                        if (!hasVerificationRecord)
-                        {
-                            user.EmailVerified = true;
-                            user.EmailVerifiedAt = DateTime.UtcNow;
-                            await _context.SaveChangesAsync();
-                        }
-                        else
-                        {
-                            ViewBag.Error = "Your email has not been verified. Please check your email for the verification link or request a new one.";
-                            ViewBag.UnverifiedUser = user.User_name;
-                            return View();
-                        }
-                    }
-
                     ResetLoginAttempts(loginKey);
                     HttpContext.Session.SetInt32("user_id", user.User_ID);
                     HttpContext.Session.SetString("User_name", user.User_name ?? "");
@@ -351,8 +332,8 @@ namespace CafeDash.Controllers
                 Address = address,
                 Password = hashedPassword,
                 Suspend = 0,
-                EmailVerified = false,
-                EmailVerifiedAt = null
+                EmailVerified = true,
+                EmailVerifiedAt = DateTime.UtcNow
             };
 
             _context.Users.Add(newUser);
@@ -360,37 +341,8 @@ namespace CafeDash.Controllers
 
             if (result > 0)
             {
-                var (emailSent, verifyLink) = await SendVerificationEmailAsync(newUser);
-                ViewBag.VerifyLink = verifyLink;
-                ViewBag.IsDevelopment = _env.IsDevelopment();
-
-                if (_env.IsDevelopment())
-                {
-                    if (emailSent && newUser.EmailVerified)
-                    {
-                        ViewBag.Success = $"Registration successful! Your account has been auto-verified for development. You can now log in.";
-                    }
-                    else if (emailSent)
-                    {
-                        ViewBag.Success = $"Registration successful! A verification email has been sent to {email}. Dev link: {verifyLink}";
-                    }
-                    else
-                    {
-                        ViewBag.Success = $"Registration successful! Your account has been auto-verified for development (SMTP unavailable). You can now log in directly. Dev link: {verifyLink}";
-                    }
-                }
-                else
-                {
-                    if (emailSent)
-                    {
-                        ViewBag.Success = "Registration successful! A verification email has been sent to your email address. Please verify your email before logging in.";
-                    }
-                    else
-                    {
-                        ViewBag.Success = "Registration successful, but we couldn't send the verification email right now. Please use the resend verification email feature to request a new link.";
-                    }
-                }
-                ViewBag.Email = email;
+                TempData["msg"] = "Registration successful! You can now log in with your credentials.";
+                return RedirectToAction("Login", "Account");
             }
             else
             {
