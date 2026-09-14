@@ -366,3 +366,4 @@ FodyWeavers.xsd
 appsettings.json
 CafeDash/Data/DatabaseSeeder.cs
 .vscode
+.trae/
