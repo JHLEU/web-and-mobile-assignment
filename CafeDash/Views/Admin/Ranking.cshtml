@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewBag.Title = "Restaurant Performance Ranking";
 }
 
@@ -33,6 +33,28 @@
                 </button>
             </div>
 
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <h3><ion-icon name="bar-chart-outline"></ion-icon> Restaurant Sales (MYR)</h3>
+                        <p>Total revenue from successful payments, per restaurant.</p>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="salesChart" aria-label="Restaurant sales column chart" role="img"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <h3><ion-icon name="trending-up-outline"></ion-icon> Trending Restaurants (Orders)</h3>
+                        <p>Number of successful transactions per restaurant.</p>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="trendingChart" aria-label="Trending restaurants column chart" role="img"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <div class="table-responsive">
                 <table class="ranking-table">
                     <thead>
@@ -57,4 +79,5 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="~/js/admin_ranking.js" asp-append-version="true"></script>

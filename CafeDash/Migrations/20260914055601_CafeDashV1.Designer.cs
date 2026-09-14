@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CafeDash.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260914011823_CafeDashV1")]
+    [Migration("20260914055601_CafeDashV1")]
     partial class CafeDashV1
     {
         /// <inheritdoc />
@@ -155,6 +155,31 @@ namespace CafeDash.Migrations
                     b.HasKey("Driver_ID");
 
                     b.ToTable("Drivers", (string)null);
+                });
+
+            modelBuilder.Entity("CafeDash.Models.EmailVerification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("created_at")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("expires_at")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("token_hash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("user_id")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailVerifications", (string)null);
                 });
 
             modelBuilder.Entity("CafeDash.Models.Food", b =>
@@ -350,6 +375,12 @@ namespace CafeDash.Migrations
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Password")
                         .HasColumnType("nvarchar(max)");

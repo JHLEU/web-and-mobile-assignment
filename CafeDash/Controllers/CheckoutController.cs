@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Stripe;
 using Microsoft.Data.SqlClient;
+using CafeDash.Data;
 
 namespace CafeDash.Models
 {
@@ -45,7 +46,7 @@ namespace CafeDash.Controllers
         public CheckoutController(IConfiguration config)
         {
             _config = config;
-            _connectionString = config.GetConnectionString("DefaultConnection")!;
+            _connectionString = ConnectionStrings.Resolve(config);
         }
 
         // ==========================================

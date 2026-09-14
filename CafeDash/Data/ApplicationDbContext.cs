@@ -1,4 +1,4 @@
-﻿using CafeDash.Models;
+using CafeDash.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CafeDash.Data
@@ -19,6 +19,7 @@ namespace CafeDash.Data
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Admin> Admins { get; set; }
         public DbSet<PasswordReset> PasswordResets { get; set; }
+        public DbSet<EmailVerification> EmailVerifications { get; set; }
 
         // Add these two for the raw SQL queries in Bills()
         public DbSet<Bill> Bills { get; set; }
@@ -37,6 +38,7 @@ namespace CafeDash.Data
             modelBuilder.Entity<Driver>().ToTable("Drivers");
             modelBuilder.Entity<Admin>().ToTable("Admins");
             modelBuilder.Entity<PasswordReset>().ToTable("PasswordResets");
+            modelBuilder.Entity<EmailVerification>().ToTable("EmailVerifications");
 
             // Configure Bill and BillItem as keyless types for raw SQL mapping
             modelBuilder.Entity<Bill>().HasNoKey();

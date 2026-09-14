@@ -362,7 +362,8 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-#ignore appsettings
-appsettings.json
-CafeDash/Data/DatabaseSeeder.cs
+# Local-only secrets. appsettings.json is committed as a working template;
+# the Development override holds real keys and must never be committed.
+CafeDash/appsettings.Development.json
 .vscode
+.trae/

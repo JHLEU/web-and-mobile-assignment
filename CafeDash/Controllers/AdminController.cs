@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient; // Swapped to Microsoft SQL Server!
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using CafeDash.Data;
 using CafeDash.Models;
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ public class AdminController : Controller
 
     public AdminController(IConfiguration configuration, IMemoryCache cache)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+        _connectionString = ConnectionStrings.Resolve(configuration);
         _cache = cache;
     }
 
