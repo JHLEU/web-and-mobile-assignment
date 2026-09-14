@@ -18,13 +18,13 @@
             <a href="/Admin/Index"><ion-icon name="mail-outline"></ion-icon>Feedback</a>
             <a href="/Admin/Restaurants"><ion-icon name="restaurant-outline"></ion-icon>Restaurants</a>
             <a href="/Admin/Members"><ion-icon name="people-outline"></ion-icon>Members</a>
-            <!-- Added your new Ranking page link -->
+            <a href="/Admin/BatchManager"><ion-icon name="construct"></ion-icon>Batch Data Manager</a>
             <a href="/Admin/Ranking"><ion-icon name="trophy-outline"></ion-icon>Ranking</a>
+            <a href="/Admin/LiveChat"><ion-icon name="chatbubbles-outline"></ion-icon>Live Chat</a>
             <a href="/Admin/Settings"><ion-icon name="settings-outline"></ion-icon>Setting</a>
         </div>
 
         <div class="sidebar-logout">
-            <!-- This secure form is what makes the Logout button actually work in C#! -->
             <form method="POST" action="/Admin/Logout_btn" style="margin: 0;">
                 <button type="submit" style="background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: inherit; font-weight: inherit; padding: 0;">
                     <ion-icon name="log-out-outline"></ion-icon>
@@ -36,3 +36,4 @@
     @RenderBody()
 </body>
 </html>
+```[cite: 4]
