@@ -75,6 +75,8 @@ namespace CafeDash.Models
         public string? Contain_number { get; set; }
         public string? Address { get; set; }
         public int Suspend { get; set; }
+        public bool EmailVerified { get; set; } = false;
+        public DateTime? EmailVerifiedAt { get; set; }
     }
 
     public class RestaurantViewModel
@@ -157,6 +159,16 @@ namespace CafeDash.Models
     }
 
     public class PasswordReset
+    {
+        [Key]
+        public int Id { get; set; }
+        public int user_id { get; set; }
+        public string? token_hash { get; set; }
+        public DateTime expires_at { get; set; }
+        public DateTime created_at { get; set; }
+    }
+
+    public class EmailVerification
     {
         [Key]
         public int Id { get; set; }

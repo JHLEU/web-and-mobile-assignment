@@ -1,0 +1,117 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CafeDash | Email Verification</title>
+    <link rel="stylesheet" href="~/css/forgot.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <style>
+            .error-box {
+                background: rgba(255, 77, 77, 0.2);
+                border: 1px solid #ff4d4d;
+                color: #fff;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 14px;
+            }
+
+            .success-box {
+                background: rgba(39, 174, 96, 0.2);
+                border: 1px solid #27ae60;
+                color: #fff;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 14px;
+            }
+
+            .info-box {
+                background: rgba(52, 152, 219, 0.2);
+                border: 1px solid #3498db;
+                color: #fff;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                font-size: 14px;
+            }
+
+            .verification-icon {
+                font-size: 64px;
+                text-align: center;
+                margin-bottom: 15px;
+            }
+
+            .verification-icon.success { color: #27ae60; }
+            .verification-icon.error { color: #e74c3c; }
+            .verification-icon.info { color: #3498db; }
+    </style>
+</head>
+<body>
+    <video autoplay muted loop id="myVideo">
+        <source src="~/material/images/coffee-login.mp4" type="video/mp4">
+    </video>
+
+    <div class="forgot-password-content">
+        <div class="forgot-password-wrapper">
+            <div style="text-align:center;">
+                <h1>Email Verification</h1>
+                <div class="logo">
+                    <img src="~/material/images/logo.png" alt="logo" style="width:180px;height:180px;">
+                </div>
+
+                @if (ViewBag.Success != null)
+                {
+                    <div class="verification-icon success"><i class='bx bx-check-circle'></i></div>
+                    <div class="success-box">
+                        <i class='bx bx-check-circle'></i> @ViewBag.Success
+                    </div>
+                    <a href="/Account/Login" style="display:inline-block;background:#27ae60;color:white;padding:12px 30px;text-decoration:none;border-radius:8px;margin-top:10px;font-weight:600;">
+                        <i class='bx bx-log-in'></i> Proceed to Login
+                    </a>
+                }
+                else if (ViewBag.Info != null)
+                {
+                    <div class="verification-icon info"><i class='bx bx-info-circle'></i></div>
+                    <div class="info-box">
+                        <i class='bx bx-info-circle'></i> @ViewBag.Info
+                    </div>
+                    <a href="/Account/Login" style="display:inline-block;background:#3498db;color:white;padding:12px 30px;text-decoration:none;border-radius:8px;margin-top:10px;font-weight:600;">
+                        <i class='bx bx-log-in'></i> Go to Login
+                    </a>
+                }
+                else if (ViewBag.Error != null)
+                {
+                    <div class="verification-icon error"><i class='bx bx-x-circle'></i></div>
+                    <div class="error-box">
+                        <i class='bx bx-error-circle'></i> @ViewBag.Error
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <a href="/Account/ResendVerificationEmail" style="display:inline-block;background:#e67e22;color:white;padding:12px 30px;text-decoration:none;border-radius:8px;margin-right:10px;font-weight:600;">
+                            <i class='bx bx-send'></i> Resend Email
+                        </a>
+                        <a href="/Account/Login" style="display:inline-block;background:#95a5a6;color:white;padding:12px 30px;text-decoration:none;border-radius:8px;font-weight:600;">
+                            <i class='bx bx-log-in'></i> Back to Login
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="verification-icon info"><i class='bx bx-loader-circle'></i></div>
+                    <div class="info-box">
+                        Processing verification...
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</body>
+</html>

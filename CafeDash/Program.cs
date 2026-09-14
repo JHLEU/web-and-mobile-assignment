@@ -23,6 +23,15 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<CafeDash.Data.ApplicationDbContext>();
+    try
+    {
+        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Database migration warning: " + ex.Message);
+    }
     //await CafeDash.Data.DatabaseSeeder.SeedRestaurantsAsync(context);
 }
 

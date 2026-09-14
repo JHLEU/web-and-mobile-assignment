@@ -1,0 +1,88 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CafeDash | Resend Verification Email</title>
+    <link rel="stylesheet" href="~/css/forgot.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <style>
+            .error-box {
+                background: rgba(255, 77, 77, 0.2);
+                border: 1px solid #ff4d4d;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: left;
+            }
+
+            .success-box {
+                background: rgba(39, 174, 96, 0.2);
+                border: 1px solid #27ae60;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+
+            .info-box {
+                background: rgba(52, 152, 219, 0.2);
+                border: 1px solid #3498db;
+                color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+    </style>
+</head>
+<body>
+    <video autoplay muted loop id="myVideo">
+        <source src="~/material/images/coffee-login.mp4" type="video/mp4">
+    </video>
+
+    <div class="forgot-password-content">
+        <div class="forgot-password-wrapper">
+            <form action="/Account/ResendVerificationEmail" method="post">
+                <h1>Resend Verification</h1>
+                <div class="logo">
+                    <img src="~/material/images/logo.png" alt="logo" style="width:180px;height:180px;">
+                </div>
+
+                @if (ViewBag.Error != null)
+                {
+                    <div class="error-box"><i class='bx bx-error-circle'></i> @ViewBag.Error</div>
+                }
+
+                @if (ViewBag.Success != null)
+                {
+                    <div class="success-box"><i class='bx bx-check-circle'></i> @ViewBag.Success</div>
+                }
+
+                @if (ViewBag.Info != null)
+                {
+                    <div class="info-box"><i class='bx bx-info-circle'></i> @ViewBag.Info</div>
+                }
+
+                <div class="textbox">
+                    <input type="text" name="email_or_username" placeholder="Enter your email or username" required>
+                    <i class='bx bx-envelope'></i>
+                </div>
+
+                <button type="submit" class="forgot-password-btn">Send Verification Email</button>
+
+                <div class="back-to-login">
+                    <p>Remembered and verified? <a href="/Account/Login">Login</a></p>
+                    <p>Don't have an account? <a href="/Account/Register">Register</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

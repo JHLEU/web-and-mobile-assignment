@@ -137,6 +137,25 @@ namespace CafeDash.Controllers
 
                 if (isValidPassword)
                 {
+                    if (!user.EmailVerified)
+                    {
+                        bool hasVerificationRecord = await _context.EmailVerifications
+                            .AnyAsync(v => v.user_id == user.User_ID);
+
+                        if (!hasVerificationRecord)
+                        {
+                            user.EmailVerified = true;
+                            user.EmailVerifiedAt = DateTime.UtcNow;
+                            await _context.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            ViewBag.Error = "Your email has not been verified. Please check your email for the verification link or request a new one.";
+                            ViewBag.UnverifiedUser = user.User_name;
+                            return View();
+                        }
+                    }
+
                     ResetLoginAttempts(loginKey);
                     HttpContext.Session.SetInt32("user_id", user.User_ID);
                     HttpContext.Session.SetString("User_name", user.User_name ?? "");
@@ -187,6 +206,61 @@ namespace CafeDash.Controllers
             return View();
         }
 
+        private async Task SendVerificationEmailAsync(User user)
+        {
+            string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLower();
+            string tokenHash = HashToken(token);
+            DateTime now = DateTime.UtcNow;
+
+            var existingTokens = await _context.EmailVerifications
+                .Where(v => v.user_id == user.User_ID)
+                .ToListAsync();
+            _context.EmailVerifications.RemoveRange(existingTokens);
+
+            _context.EmailVerifications.Add(new EmailVerification
+            {
+                user_id = user.User_ID,
+                token_hash = tokenHash,
+                expires_at = now.AddHours(24),
+                created_at = now
+            });
+            await _context.SaveChangesAsync();
+
+            string verifyLink = Url.Action("VerifyEmail", "Account", new { token = token }, Request.Scheme)!;
+
+            try
+            {
+                var _config = HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+
+                using (var smtp = new SmtpClient(_config["Smtp:Host"]!, int.Parse(_config["Smtp:Port"]!)))
+                {
+                    smtp.Credentials = new System.Net.NetworkCredential(_config["Smtp:Username"], _config["Smtp:Password"]);
+                    smtp.EnableSsl = true;
+                    var mailMessage = new MailMessage
+                    {
+                        From = new MailAddress(_config["Smtp:FromEmail"]!, _config["Smtp:FromName"]),
+                        Subject = "CafeDash - Verify Your Email Address",
+                        Body = $"<h2>Welcome to CafeDash, {user.User_name}!</h2>" +
+                               $"<p>Thank you for registering. Please click the link below to verify your email address and activate your account:</p>" +
+                               $"<p><a href='{verifyLink}' style='background-color:#4CAF50;color:white;padding:10px 20px;text-decoration:none;border-radius:4px;display:inline-block;'>Verify Email Address</a></p>" +
+                               $"<p>Or copy and paste this link into your browser:</p>" +
+                               $"<p><a href='{verifyLink}'>{verifyLink}</a></p>" +
+                               $"<p>This link expires in 24 hours.</p>" +
+                               $"<p>If you did not create an account with CafeDash, you can safely ignore this email.</p>" +
+                               $"<br/><p>Best regards,<br/>CafeDash Support Team</p>",
+                        IsBodyHtml = true
+                    };
+                    mailMessage.To.Add(user.Email!);
+
+                    smtp.Send(mailMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Verification email failed to send: " + ex.Message);
+            }
+        }
+
         // 5. Handles Registration Form Submission using EF Core
         [HttpPost]
         public async Task<IActionResult> Register(string user_name, string email, string phone, string address, string password, string confirm_password)
@@ -211,7 +285,6 @@ namespace CafeDash.Controllers
                 return View();
             }
 
-            // Check if user already exists via EF Core
             bool userExists = await _context.Users
                 .AnyAsync(u => u.User_name == user_name || u.Email == email);
 
@@ -221,7 +294,6 @@ namespace CafeDash.Controllers
                 return View();
             }
 
-            // Create and insert the new user object
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
             var newUser = new User
             {
@@ -230,7 +302,9 @@ namespace CafeDash.Controllers
                 Contain_number = phone,
                 Address = address,
                 Password = hashedPassword,
-                Suspend = 0
+                Suspend = 0,
+                EmailVerified = false,
+                EmailVerifiedAt = null
             };
 
             _context.Users.Add(newUser);
@@ -238,13 +312,103 @@ namespace CafeDash.Controllers
 
             if (result > 0)
             {
-                ViewBag.Success = "Registration successful. You can now login with your account.";
+                await SendVerificationEmailAsync(newUser);
+                ViewBag.Success = "Registration successful! A verification email has been sent to your email address. Please verify your email before logging in.";
+                ViewBag.Email = email;
             }
             else
             {
                 ViewBag.Error = "System error: unable to complete registration right now.";
             }
 
+            return View();
+        }
+
+        // ==========================================
+        // EMAIL VERIFICATION
+        // ==========================================
+        [HttpGet]
+        public async Task<IActionResult> VerifyEmail(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                ViewBag.Error = "Verification token is missing.";
+                return View();
+            }
+
+            string tokenHash = HashToken(token);
+            var verification = await _context.EmailVerifications
+                .FirstOrDefaultAsync(v => v.token_hash == tokenHash && v.expires_at > DateTime.UtcNow);
+
+            if (verification == null)
+            {
+                ViewBag.Error = "This verification link is invalid or has expired. Please request a new one.";
+                return View();
+            }
+
+            var user = await _context.Users.FindAsync(verification.user_id);
+            if (user == null)
+            {
+                _context.EmailVerifications.Remove(verification);
+                await _context.SaveChangesAsync();
+                ViewBag.Error = "This verification link is invalid. User account not found.";
+                return View();
+            }
+
+            if (user.EmailVerified)
+            {
+                ViewBag.Info = "Your email has already been verified. You can now log in.";
+                _context.EmailVerifications.Remove(verification);
+                await _context.SaveChangesAsync();
+                return View();
+            }
+
+            user.EmailVerified = true;
+            user.EmailVerifiedAt = DateTime.UtcNow;
+            _context.EmailVerifications.Remove(verification);
+            await _context.SaveChangesAsync();
+
+            ViewBag.Success = "Your email has been verified successfully! Your account is now activated. You can log in.";
+            ViewBag.UserName = user.User_name;
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult ResendVerificationEmail()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ResendVerificationEmail(string email_or_username)
+        {
+            if (string.IsNullOrWhiteSpace(email_or_username))
+            {
+                ViewBag.Error = "Please enter your registered email or username.";
+                return View();
+            }
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.User_name == email_or_username.Trim() || u.Email == email_or_username.Trim());
+
+            if (user != null)
+            {
+                if (user.EmailVerified)
+                {
+                    ViewBag.Info = "This account's email is already verified. You can log in directly.";
+                    return View();
+                }
+
+                if (user.Suspend == 1)
+                {
+                    ViewBag.Error = "Your account has been suspended. Please contact the administrator.";
+                    return View();
+                }
+
+                await SendVerificationEmailAsync(user);
+            }
+
+            ViewBag.Success = "If the account exists and is not verified, a new verification email has been sent.";
             return View();
         }
 
